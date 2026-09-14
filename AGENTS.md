@@ -12,7 +12,7 @@ Integration suite, test layout and the release process: `CONTRIBUTING.md`.
 
 ### Issue tracker
 
-GitHub Issues on `sripwoud/pi-memsearch`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+GitHub Issues on `espadat-studio/pi-memsearch`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

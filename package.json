@@ -22,7 +22,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sripwoud/pi-memsearch.git"
+    "url": "git+https://github.com/espadat-studio/pi-memsearch.git"
   },
   "type": "module",
   "files": [
