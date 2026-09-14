@@ -3,7 +3,7 @@
 # pi-memsearch
 
 [![npm](https://img.shields.io/npm/v/pi-memsearch?logo=npm&logoColor=white&label=npm)](https://www.npmjs.com/package/pi-memsearch)
-[![ci](https://img.shields.io/github/actions/workflow/status/sripwoud/pi-memsearch/master.yml?branch=master&logo=githubactions&logoColor=white&label=ci)](https://github.com/sripwoud/pi-memsearch/actions/workflows/master.yml?query=branch%3Amaster)
+[![ci](https://img.shields.io/github/actions/workflow/status/espadat-studio/pi-memsearch/master.yml?branch=master&logo=githubactions&logoColor=white&label=ci)](https://github.com/espadat-studio/pi-memsearch/actions/workflows/master.yml?query=branch%3Amaster)
 
 </div>
 
@@ -53,7 +53,7 @@ Prerequisites: [uv](https://docs.astral.sh/uv/) (the only external dependency â€
 pi install npm:pi-memsearch                                        # all projects (~/.pi/settings.json)
 pi install npm:pi-memsearch -l                                     # this project (.pi/settings.json)
 pi install npm:pi-memsearch@1.0.0                                  # pinned; `pi update` never advances it
-pi install https://github.com/sripwoud/pi-memsearch                # unreleased master
+pi install https://github.com/espadat-studio/pi-memsearch                # unreleased master
 ```
 
 First run, once per machine: `uvx` resolves `memsearch[onnx]>=0.4.17,<0.5`, and the first embedding downloads the onnx model once (~560 MB â€” a ~10 s pause on a fast connection, announced as a notice so it is not mistaken for a hang). No API key is involved: when no embedding provider is configured anywhere, the package sets `embedding.provider = onnx` in memsearch's global config once. An existing config is never touched.
