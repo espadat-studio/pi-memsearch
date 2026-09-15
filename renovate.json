@@ -6,6 +6,23 @@
     "helpers:pinGitHubActionDigests"
   ],
   "semanticCommits": "enabled",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "hk's pkl schema version lives in hk.pkl's package URL, separate from the binary in mise.toml. A major bump of one without the other fails `hk check` with an opaque pkl eval error. Keep both in the same PR.",
+      "managerFilePatterns": [
+        "/^hk\\.pkl$/"
+      ],
+      "matchStrings": [
+        "hk/releases/download/v(?<currentValue>[^/\"]+)/",
+        "/hk@(?<currentValue>[^#\"]+)#"
+      ],
+      "matchStringsStrategy": "any",
+      "depNameTemplate": "jdx/hk",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ],
   "packageRules": [
     {
       "description": "@types/node tracks engines.node, not the newest LTS. Typechecking against 24's lib accepts APIs absent on the >=22.19.0 floor this package claims. Raise this ceiling in the same commit that raises engines.",
