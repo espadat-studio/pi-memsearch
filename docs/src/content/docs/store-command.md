@@ -3,7 +3,7 @@ title: Store command
 description: The `PI_MEMSEARCH_STORE_CMD` contract, the four rules that are easy to get wrong, and a reference resolver.
 ---
 
-`PI_MEMSEARCH_STORE_CMD` hands store resolution to a command you own, so pi can join a memory store that lives outside the repos — one central store keyed per repository, say, shared with the other agents in the mesh. Unset, pi resolves everything itself and none of this applies.
+`PI_MEMSEARCH_STORE_CMD` hands store resolution to a command you own, so pi can join a memory store that lives outside the repos: one central store keyed per repository, say, shared with the other agents in the mesh. Unset, pi resolves everything itself and none of this applies.
 
 Why the seam exists, and what was rejected: [ADR 0007](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0007-delegated-store-resolution.md). What pi does with the answers: [the runtime page](/runtime/).
 
@@ -19,19 +19,19 @@ One command, one argument, no flags. It runs with the working directory set to t
 
 ## The four rules that are easy to get wrong
 
-**Decline by succeeding, not by failing.** `state-dir` is optional, but "optional" means **exit 0 printing nothing**. A non-zero exit is fatal for every mode, including this one. The natural defensive `case` arm —
+**Decline by succeeding, not by failing.** `state-dir` is optional, but "optional" means **exit 0 printing nothing**. A non-zero exit is fatal for every mode, including this one. The natural defensive `case` arm breaks pi the first time it probes a mode your script predates:
 
 ```sh
 *) echo "unknown mode: $MODE" >&2; exit 1 ;;
 ```
 
-— breaks pi the first time it probes a mode your script predates. Make the catch-all `exit 0`. pi still fails loudly on the required modes, because empty output is an error for those.
+Make the catch-all `exit 0`. pi still fails loudly on the required modes, because empty output is an error for those.
 
 **Answer for the directory you are standing in.** Cross-repo fan-out asks about each discovered project, running the command inside that project's _store_ directory rather than a checkout. Derive from the working directory, never from a variable captured elsewhere.
 
 **Absolute paths only.** A relative `memory-dir` or `state-dir` is rejected rather than resolved against something.
 
-**You are called once per directory, per mode, per process.** Answers are memoized for the life of the pi process, so the command may be slow-ish, but it must be deterministic — the same directory has to produce the same answer for the whole session.
+**You are called once per directory, per mode, per process.** Answers are memoized for the life of the pi process, so the command may be slow-ish, but it must be deterministic: the same directory has to produce the same answer for the whole session.
 
 ## Reference
 
@@ -70,7 +70,7 @@ state-dir) printf '%s\n' "$STATE_ROOT/$("$DERIVE_COLLECTION" "$key")" ;;
 esac
 ```
 
-Keying on `--git-common-dir` is what makes every linked worktree share one corpus. Note this is a deliberate divergence from the stock plugin shells, which key on `--show-toplevel` and therefore give each worktree its own collection — so a resolver doing this must be the resolver _every_ agent on the machine uses, or the two halves silo again. That is the whole failure this seam exists to close.
+Keying on `--git-common-dir` is what makes every linked worktree share one corpus. Note this is a deliberate divergence from the stock plugin shells, which key on `--show-toplevel` and therefore give each worktree its own collection, so a resolver doing this must be the resolver _every_ agent on the machine uses, or the two halves silo again. That is the whole failure this seam exists to close.
 
 ## Verifying
 
