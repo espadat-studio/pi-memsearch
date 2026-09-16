@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/espadat-studio/pi-memsearch/compare/v1.4.2...v1.4.3) (2026-09-16)
+
+
+### Bug Fixes
+
+* cut the readme to a shopfront, move the docs to the site ([#119](https://github.com/espadat-studio/pi-memsearch/issues/119)) ([b1c83b1](https://github.com/espadat-studio/pi-memsearch/commit/b1c83b151ebdd9271d66f8d1f19986872a5725c5))
+
 ## [1.4.2](https://github.com/espadat-studio/pi-memsearch/compare/v1.4.1...v1.4.2) (2026-09-16)
 
 
