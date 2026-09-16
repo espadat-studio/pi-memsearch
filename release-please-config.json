@@ -7,7 +7,10 @@
       "changelog-path": "CHANGELOG.md",
       "draft": true,
       "force-tag-creation": true,
-      "extra-files": [{ "type": "generic", "path": "README.md" }]
+      "extra-files": [
+        { "type": "generic", "path": "README.md" },
+        { "type": "generic", "path": "docs/src/content/docs/install.md" }
+      ]
     }
   },
   "bootstrap-sha": "bc6dd92cd44dff78a4fff678da9ac15de86b54d5",
