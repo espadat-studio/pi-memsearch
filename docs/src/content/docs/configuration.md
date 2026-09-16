@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Every PI_MEMSEARCH_ variable with its default and effect, and the line between pi-local config and memsearch's own.
+description: "Every PI_MEMSEARCH_* variable with its default and effect, and the line between pi-local config and memsearch's own."
 ---
 
 Configuration lives on two surfaces, deliberately separate.
@@ -10,7 +10,7 @@ Configuration lives on two surfaces, deliberately separate.
 | memsearch's own config | Everything shared with the mesh: embedding provider and model, chunking, the compaction LLM | `~/.memsearch/config.toml`, with a project `.memsearch.toml` layered over it |
 | pi-local environment   | Only how pi drives memsearch                                                                | the `PI_MEMSEARCH_*` variables below                                         |
 
-The split is not cosmetic. Anything that changes what the store looks like to another agent belongs upstream in memsearch's config, so Claude Code, Codex, OpenClaw, OpenCode and pi keep reading one store the same way ([ADR 0001, mesh parity](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0001-mesh-parity.md)). pi-memsearch adds no config of its own for those.
+Anything that changes what the store looks like to another agent belongs upstream in memsearch's config, so Claude Code, Codex, OpenClaw, OpenCode and pi keep reading one store the same way ([ADR 0001, mesh parity](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0001-mesh-parity.md)). pi-memsearch adds no config of its own for those.
 
 ## Variables
 
@@ -32,8 +32,8 @@ The split is not cosmetic. Anything that changes what the store looks like to an
 
 Off by default, and the only setting with a standing cost.
 
-- **Memory**: ~0.7–1.0 GB resident while on, held by a per-session sidecar that keeps the embedding model warm.
-- **Latency**: a 300 ms hard cap per prompt. A deadline miss, an empty result or a locked store each degrade to no injection, so a prompt never waits on memory.
-- **Remote providers**: they will often miss the cap. Three consecutive misses count as a crash, and past the respawn cap auto-context switches off for the rest of the session rather than spending 300 ms on every prompt.
+While it is on, a per-session sidecar holds the embedding model warm and takes 0.7 to 1.0 GB of resident memory. Every prompt gets a 300 ms hard cap. A deadline miss, an empty result or a locked store all degrade to no injection, so a prompt never waits on memory.
+
+Remote embedding providers will often miss that cap. Three consecutive misses count as a crash, and past the respawn cap auto-context switches off for the rest of the session rather than spending 300 ms on every prompt.
 
 Every tunable constant, and how the sidecar borrows the Milvus Lite lock for milliseconds at a time: [the runtime page](/runtime/#auto-context).

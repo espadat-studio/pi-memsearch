@@ -7,14 +7,14 @@ Current release: [1.4.2](https://github.com/espadat-studio/pi-memsearch/blob/mas
 
 ## Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) — the only external dependency. memsearch runs through `uvx`, so there is no Python packaging to manage.
+- [uv](https://docs.astral.sh/uv/): the only external dependency. memsearch runs through `uvx`, so there is no Python packaging to manage.
 - pi >= 0.84.1. The 0.84.x line is the one the integration suite runs against.
 - Node >= 22.19.
 - Linux or macOS. milvus-lite ships no Windows wheels, so Windows needs WSL2.
 
 ## Installing
 
-Four forms. They differ only in which settings file the entry lands in, and whether `pi update` may advance it.
+Four forms:
 
 ```sh
 pi install npm:pi-memsearch                               # all projects (~/.pi/settings.json)
@@ -26,7 +26,7 @@ pi install https://github.com/espadat-studio/pi-memsearch # unreleased master
 ## The first run
 
 :::note[The first run pauses once, on purpose]
-`uvx` resolves `memsearch[onnx]>=0.4.17,<0.5`, and then the first embedding downloads the onnx model — about 560 MB, roughly a 10 s pause on a fast connection. pi announces it as a notice so it is not mistaken for a hang. It happens once per machine, not once per project.
+`uvx` resolves `memsearch[onnx]>=0.4.17,<0.5`, and then the first embedding downloads the onnx model, about 560 MB. That is roughly a 10 s pause on a fast connection, and pi announces it as a notice so it is not mistaken for a hang. It happens once per machine, not once per project.
 :::
 
 No API key is involved. When no embedding provider is configured anywhere, pi-memsearch writes `embedding.provider = onnx` into memsearch's global config, once. An existing config is never touched: whatever the rest of the mesh already agreed on stays.
@@ -45,4 +45,4 @@ If anything looks wrong, [troubleshooting](/troubleshooting/) is built around re
 pi remove npm:pi-memsearch
 ```
 
-The memory markdown under `.memsearch/` survives. It is yours, not the package's — the collection in `~/.memsearch/milvus.db` is derived from that markdown and rebuildable at any time, so nothing irreplaceable ever lived inside pi-memsearch.
+The memory markdown under `.memsearch/` survives. It is yours, not the package's. The collection in `~/.memsearch/milvus.db` is derived from that markdown and rebuildable at any time, so nothing irreplaceable ever lived inside pi-memsearch.

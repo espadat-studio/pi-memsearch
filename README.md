@@ -9,7 +9,7 @@
 
 </div>
 
-pi ships no memory by design — "primitives, not features". This package gives it long-term memory through [memsearch](https://zilliztech.github.io/memsearch/), the same per-project memory store Claude Code, Codex, OpenClaw and OpenCode already write to.
+pi ships no memory by design: "primitives, not features". This package gives it long-term memory through [memsearch](https://zilliztech.github.io/memsearch/), the same per-project memory store Claude Code, Codex, OpenClaw and OpenCode already write to.
 
 - **Recall in the phrasing you use weeks later**: **32/35** strong hits vs **26/35** for `pi-memory`'s qmd backend, over 35 queries against an identical 223-file corpus ([benchmark](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/research/memsearch-vs-pi-memory-benchmark.md)).
 - **Cross-agent**: pi recalls what Claude Code learned yesterday in the same repo, and vice versa.
@@ -47,15 +47,15 @@ Project-local, pinned and unreleased installs, and what survives an uninstall: [
 
 Everything is at **[pi-memsearch.espadat.com](https://pi-memsearch.espadat.com)**:
 
-- [Install](https://pi-memsearch.espadat.com/install/) — prerequisites, the four install forms, first run, uninstall
-- [Configuration](https://pi-memsearch.espadat.com/configuration/) — every `PI_MEMSEARCH_*` variable, with its default and effect
-- [Tools](https://pi-memsearch.espadat.com/tools/) — the seven tools, and the three-rung recall ladder
-- [Memory store](https://pi-memsearch.espadat.com/memory-store/) — the daily markdown files, and which store a session writes to
-- [Runtime](https://pi-memsearch.espadat.com/runtime/) — hook-by-hook behavior, every tunable, every degradation path
-- [Troubleshooting](https://pi-memsearch.espadat.com/troubleshooting/) — start with `memory_status`
-- [Limits](https://pi-memsearch.espadat.com/limits/) — what is deliberately unsupported, and how it compares to `pi-memory`
+- [Install](https://pi-memsearch.espadat.com/install/): prerequisites, the four install forms, first run, uninstall
+- [Configuration](https://pi-memsearch.espadat.com/configuration/): every `PI_MEMSEARCH_*` variable, with its default and effect
+- [Tools](https://pi-memsearch.espadat.com/tools/): the seven tools, and the three-rung recall ladder
+- [Memory store](https://pi-memsearch.espadat.com/memory-store/): the daily markdown files, and which store a session writes to
+- [Runtime](https://pi-memsearch.espadat.com/runtime/): hook-by-hook behavior, every tunable, every degradation path
+- [Troubleshooting](https://pi-memsearch.espadat.com/troubleshooting/): start with `memory_status`
+- [Limits](https://pi-memsearch.espadat.com/limits/): what is deliberately unsupported, and how it compares to `pi-memory`
 
-In the repo: [`CONTEXT.md`](https://github.com/espadat-studio/pi-memsearch/blob/master/CONTEXT.md) for the vocabulary, and [`meta/adr/`](https://github.com/espadat-studio/pi-memsearch/tree/master/meta/adr) for the decisions and their rejected alternatives — mesh parity ([ADR 0001](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0001-mesh-parity.md)) constrains the rest.
+In the repo: [`CONTEXT.md`](https://github.com/espadat-studio/pi-memsearch/blob/master/CONTEXT.md) for the vocabulary, and [`meta/adr/`](https://github.com/espadat-studio/pi-memsearch/tree/master/meta/adr) for the decisions and their rejected alternatives. Mesh parity ([ADR 0001](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0001-mesh-parity.md)) constrains the rest.
 
 ## Development
 

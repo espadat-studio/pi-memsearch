@@ -3,7 +3,7 @@ title: Development
 description: The mise tasks, the no-build-step jiti loading, and where the contributor guide lives.
 ---
 
-`mise run setup` once — it installs the node dependencies and the `hk` git hooks. Never bypass the hooks; fix what they report.
+`mise run setup` once: it installs the node dependencies and the `hk` git hooks. Never bypass the hooks; fix what they report.
 
 | Task                        | Alias | What                                                                                    |
 | --------------------------- | ----- | --------------------------------------------------------------------------------------- |

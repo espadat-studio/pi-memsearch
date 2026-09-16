@@ -21,21 +21,21 @@ Most of what pi-memsearch does happens without being asked. The tools are the pa
 
 ## The recall ladder
 
-Three tools are one mechanism read at three depths. `/recall <query>`, or the agent reaching for the auto-discoverable recall skill on its own, starts at the top rung and stops at the shallowest one that answers the question.
+Three tools are one mechanism read at three depths. `/recall <query>`, or the agent reaching for the auto-discoverable recall skill on its own, starts at the cheapest rung and stops at the first one that answers the question.
 
-**L1 — `memory_search`.** Casts wide. Returns the top-k scored chunks, five by default, each carrying a chunk hash. Costs one embedder load, which is the expensive part of recall. Most questions end here, because a distilled bullet is usually the whole answer.
+**L1, `memory_search`** casts wide: the top-k scored chunks, five by default, each carrying a chunk hash. It costs one embedder load, which is the expensive part of recall. Most questions end here, because a distilled bullet is usually the whole answer.
 
-**L2 — `memory_expand`.** Takes a chunk hash and returns the entire section it came from, plus that section's session anchor. No embedder, so it is cheap — reach for it whenever a chunk is suggestive but clipped.
+**L2, `memory_expand`** takes a chunk hash and returns the entire section it came from, plus that section's session anchor. No embedder, so it is cheap. Reach for it whenever a chunk is suggestive but clipped.
 
-**L3 — `memory_transcript`.** Takes the anchor and returns the turns around that entry in the origin transcript, following the branch the memory anchors to even past a later fork. A pure file read: it never touches the search backend, so L3 keeps working when memsearch is unavailable. It exists because a distilled bullet sometimes loses the reasoning that produced a decision ([ADR 0006](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0006-l3-transcript-tool.md)).
+**L3, `memory_transcript`** takes the anchor and returns the turns around that entry in the origin transcript, following the branch the memory anchors to even past a later fork. It is a pure file read and never touches the search backend, so L3 keeps working when memsearch is unavailable. It exists because a distilled bullet sometimes loses the reasoning that produced a decision ([ADR 0006](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0006-l3-transcript-tool.md)).
 
-The rungs are ordered by cost, and each one is an order of magnitude more expensive in context than the one above it. That is why recall climbs down deliberately instead of one call returning everything: a question answered at L1 never pays for the transcript, and a session that always loaded transcripts would spend its context window on conversations it did not need.
+Each rung returns more text than the one above it, which is why recall climbs down deliberately instead of one call returning everything. A question answered at L1 never loads a transcript, and a session that always loaded them would spend its context window on conversations it did not need.
 
-| Layer | Tool                | Returns                                                                                                | Cost                |
-| ----- | ------------------- | ------------------------------------------------------------------------------------------------------ | ------------------- |
-| L1    | `memory_search`     | Top-k scored chunks, default 5                                                                         | One embedder load   |
-| L2    | `memory_expand`     | The full section behind a chunk hash, plus its session anchor                                          | No embedder — cheap |
-| L3    | `memory_transcript` | The turns around the anchored entry, following the branch the memory anchors to even past a later fork | Pure file read      |
+| Layer | Tool                | Returns                                                                                                | Cost               |
+| ----- | ------------------- | ------------------------------------------------------------------------------------------------------ | ------------------ |
+| L1    | `memory_search`     | Top-k scored chunks, default 5                                                                         | One embedder load  |
+| L2    | `memory_expand`     | The full section behind a chunk hash, plus its session anchor                                          | No embedder, cheap |
+| L3    | `memory_transcript` | The turns around the anchored entry, following the branch the memory anchors to even past a later fork | Pure file read     |
 
 Scores are normalized RRF ranks over hybrid dense and BM25 retrieval, **not** cosine similarity. Do not read them as absolute confidence. An empty result says it is empty; it never invents hits.
 
@@ -43,15 +43,15 @@ Scores are normalized RRF ranks over hybrid dense and BM25 retrieval, **not** co
 
 | Tool                | Layer | Purpose                                                                                                                 |
 | ------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------- |
-| `memory_write`      | —     | Persist a memory now: timestamped, anchored, appended to today's daily memory file                                      |
+| `memory_write`      |       | Persist a memory now: timestamped, anchored, appended to today's daily memory file                                      |
 | `memory_search`     | L1    | Top-k scored chunks for a query; `scope: "all"` widens to cross-repo recall                                             |
 | `memory_expand`     | L2    | Full section for a chunk hash, with its session anchor; `project` routes to a cross-repo hit's origin                   |
 | `memory_transcript` | L3    | Turns around an anchored entry in the origin transcript, on the branch the memory anchors to; pure file read            |
-| `memory_forget`     | —     | Redact one entry or compact block from store and collection; the tool result is the only record                         |
-| `memory_compact`    | —     | Memory compaction on explicit request; returns memsearch's markdown summary                                             |
-| `memory_status`     | —     | Doctor: uv/memsearch presence and version, scope, collection, index state, chunk count, auto-context state and counters |
+| `memory_forget`     |       | Redact one entry or compact block from store and collection; the tool result is the only record                         |
+| `memory_compact`    |       | Memory compaction on explicit request; returns memsearch's markdown summary                                             |
+| `memory_status`     |       | Doctor: uv/memsearch presence and version, scope, collection, index state, chunk count, auto-context state and counters |
 
-`memory_status` is the one to reach for first when recall is not behaving — see [troubleshooting](/troubleshooting/).
+`memory_status` is the one to reach for first when recall is not behaving: see [troubleshooting](/troubleshooting/).
 
 ## Cross-repo recall
 

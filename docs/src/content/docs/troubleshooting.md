@@ -24,7 +24,7 @@ A missing `uv` or memsearch never breaks a session:
 | -------------------------------------------------- | ------------------------------------------------------------------------- |
 | Capture, `memory_write`                            | Still append to the daily memory file; the stable snapshot still reads it |
 | `memory_search`, `memory_expand`, `memory_compact` | Return install instructions, not an error                                 |
-| `memory_transcript`                                | Unaffected — L3 recall is a pure file read that never touches the backend |
+| `memory_transcript`                                | Unaffected: L3 recall is a pure file read that never touches the backend  |
 | Auto-context                                       | No injection; the prompt proceeds                                         |
 
 Availability is re-probed with a short negative cache, so [installing `uv`](/install/) mid-session is picked up without a restart. Once the backend is back, the next index makes everything written in the meantime searchable.
@@ -36,7 +36,7 @@ The [store command](/store-command/) is the deliberate exception. When it is set
 | Symptom                                   | Likely cause                                                                               | Fix                                                                             |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
 | Search returns install instructions       | `uv` or memsearch missing                                                                  | Install [uv](https://docs.astral.sh/uv/); availability is re-probed mid-session |
-| First search pauses ~10 s                 | One-time onnx model download                                                               | Wait — the notice announces it                                                  |
+| First search pauses ~10 s                 | One-time onnx model download                                                               | Wait, the notice announces it                                                   |
 | A just-written memory is not found        | The debounced index (5 s after a write) has not run yet                                    | Retry in a moment; shutdown and session start also index                        |
 | Search finds nothing after the repo moved | The collection name hashes the absolute path                                               | The next session start catch-up indexes into the new collection                 |
 | Nothing is captured                       | `PI_MEMSEARCH_CAPTURE=off`, or the exchange failed a gate (no assistant text, aborted run) | [`memory_status`](#start-with-memory_status) shows the active config            |
