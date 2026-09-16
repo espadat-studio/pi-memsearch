@@ -1,6 +1,6 @@
 ---
 title: pi-memsearch
-description: Long-term memory for pi — semantic recall over a memsearch store shared with Claude Code, Codex and OpenCode.
+description: Long-term memory for pi — semantic recall over a memsearch store shared with Claude Code, Codex, OpenClaw and OpenCode.
 ---
 
 > Long-term memory for pi, in a store your other coding agents already write to.
@@ -9,7 +9,7 @@ pi ships no memory by design — "primitives, not features". This package gives 
 
 ## Features
 
-- **Recall in the phrasing you use weeks later** — **32/35** strong hits against `pi-memory`'s **26/35**, over 35 queries on an identical 223-file corpus
+- **Recall in the phrasing you use weeks later** — **32/35** strong hits against `pi-memory`'s **26/35**, over 35 queries on an identical 223-file corpus ([method and per-query results](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/research/memsearch-vs-pi-memory-benchmark.md))
 - **Cross-agent** — pi recalls what Claude Code learned yesterday in the same repo, and the reverse
 - **Writes itself** — the `agent_settled` hook distils every content-bearing exchange into today's memory file, in the background, on the session provider's cheapest model
 - **Three recall layers** — scored chunks, then the full section, then the turns around it in the origin transcript

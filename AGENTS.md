@@ -4,7 +4,9 @@
 
 `mise run setup` once, then `mise run check` (biome + dprint + tsc), `mise run fix`, `mise run test` (`node --test`).
 
-No build step: pi loads `extensions/*.ts` through jiti, so ship TypeScript source and use relative imports with explicit `.ts` extensions.
+The package has no build step: pi loads `extensions/*.ts` through jiti, so ship TypeScript source and use relative imports with explicit `.ts` extensions.
+
+The site has one. `docs/` is a standalone Astro project with its own `package.json` and lockfile, outside every mise task, built by `.github/workflows/docs.yml`. Work on it with `npm --prefix docs ci` then `npm --prefix docs run build`.
 
 Integration suite, test layout and the release process: `CONTRIBUTING.md`.
 

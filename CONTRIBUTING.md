@@ -64,6 +64,7 @@ What ships in the tarball, and therefore needs a releasable type when it changes
 | `extensions/`, `prompts/`, `skills/`, `src/`                   | yes   | `package.json` `files`    |
 | `README.md`, `LICENSE`, `package.json`                         | yes   | npm always includes these |
 | `meta/`, `CONTRIBUTING.md`, `AGENTS.md`, `CONTEXT.md`, `test/` | no    | GitHub only               |
+| `docs/`                                                        | no    | the published site        |
 
 A README-only change is consumer-facing — the README is the npm and `pi.dev/packages` landing page — so type it `fix:`. If it already merged as `docs:`, force the release instead:
 
