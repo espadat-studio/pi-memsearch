@@ -28,7 +28,7 @@ export default defineConfig({
       sidebar: [
         { label: 'Home', link: '/' },
         {
-          label: 'Getting Started',
+          label: 'Getting started',
           items: [
             { label: 'Install', slug: 'install' },
             { label: 'Configuration', slug: 'configuration' },

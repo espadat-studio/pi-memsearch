@@ -54,11 +54,10 @@ Everything is at **[pi-memsearch.espadat.com](https://pi-memsearch.espadat.com)*
 - [Runtime](https://pi-memsearch.espadat.com/runtime/): hook-by-hook behavior, every tunable, every degradation path
 - [Troubleshooting](https://pi-memsearch.espadat.com/troubleshooting/): start with `memory_status`
 - [Limits](https://pi-memsearch.espadat.com/limits/): what is deliberately unsupported, and how it compares to `pi-memory`
+- [Development](https://pi-memsearch.espadat.com/development/): the mise tasks, and the no-build-step jiti loading
 
 In the repo: [`CONTEXT.md`](https://github.com/espadat-studio/pi-memsearch/blob/master/CONTEXT.md) for the vocabulary, and [`meta/adr/`](https://github.com/espadat-studio/pi-memsearch/tree/master/meta/adr) for the decisions and their rejected alternatives. Mesh parity ([ADR 0001](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0001-mesh-parity.md)) constrains the rest.
 
 ## Development
 
-`mise run setup`, then `mise run check` / `test` / `dev`. No build step: pi loads `extensions/*.ts` through jiti, so the package ships TypeScript source.
-
-Task reference, test layout and the release process: [`CONTRIBUTING.md`](https://github.com/espadat-studio/pi-memsearch/blob/master/CONTRIBUTING.md).
+`mise run setup`, then `mise run check` / `test` / `dev`. Task reference, test layout and the release process: [the development page](https://pi-memsearch.espadat.com/development/) and [`CONTRIBUTING.md`](https://github.com/espadat-studio/pi-memsearch/blob/master/CONTRIBUTING.md).

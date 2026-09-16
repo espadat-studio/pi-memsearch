@@ -10,7 +10,7 @@ Current release: [1.4.2](https://github.com/espadat-studio/pi-memsearch/blob/mas
 - [uv](https://docs.astral.sh/uv/): the only external dependency. memsearch runs through `uvx`, so there is no Python packaging to manage.
 - pi >= 0.84.1. The 0.84.x line is the one the integration suite runs against.
 - Node >= 22.19.
-- Linux or macOS. milvus-lite ships no Windows wheels, so Windows needs WSL2.
+- Linux or macOS. Windows needs WSL2, for [the reason on the limits page](/limits/).
 
 ## Installing
 
