@@ -1,11 +1,11 @@
 ---
 title: pi-memsearch
-description: "Long-term memory for pi: semantic recall over a memsearch store shared with Claude Code, Codex, OpenClaw and OpenCode."
+description: "Long-term memory for pi: recall what a session learned weeks later, by meaning, from the memsearch store Claude Code, Codex, OpenClaw and OpenCode share."
 ---
 
-> Long-term memory for pi, in a store your other coding agents already write to.
+> Long-term memory for pi, in the store your other coding agents already write to.
 
-pi ships no memory by design: "primitives, not features". This package gives it long-term memory through [memsearch](https://zilliztech.github.io/memsearch/), the same per-project memory store Claude Code, Codex, OpenClaw and OpenCode already use. Memory is plain markdown under `.memsearch/`; the searchable collection is derived from it and rebuildable at any time.
+Every pi session starts from zero. pi ships no memory by design ("primitives, not features"), so this package adds it. Each session writes what it learned to a memory file, and weeks later pi finds it again by meaning, in whatever words you use then. The store is the same per-project one Claude Code, Codex, OpenClaw and OpenCode write through [memsearch](https://zilliztech.github.io/memsearch/). Memory is plain markdown under `.memsearch/`; the searchable collection is derived from it and rebuildable at any time.
 
 ## Features
 

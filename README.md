@@ -9,7 +9,9 @@
 
 </div>
 
-pi ships no memory by design: "primitives, not features". This package gives it long-term memory through [memsearch](https://zilliztech.github.io/memsearch/), the same per-project memory store Claude Code, Codex, OpenClaw and OpenCode already write to.
+> Long-term memory for pi, in the store your other coding agents already write to.
+
+Every pi session starts from zero. pi ships no memory by design ("primitives, not features"), so this package adds it. Each session writes what it learned to a memory file, and weeks later pi finds it again by meaning, in whatever words you use then. The store is the same per-project one Claude Code, Codex, OpenClaw and OpenCode write through [memsearch](https://zilliztech.github.io/memsearch/).
 
 - **Recall in the phrasing you use weeks later**: **32/35** strong hits vs **26/35** for `pi-memory`'s qmd backend, over 35 queries against an identical 223-file corpus ([benchmark](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/research/memsearch-vs-pi-memory-benchmark.md)).
 - **Cross-agent**: pi recalls what Claude Code learned yesterday in the same repo, and vice versa.
