@@ -1,0 +1,66 @@
+name: docs
+
+# Deliberately its own workflow rather than a job in master.yml: a broken docs
+# build must never gate release-please, which triggers on the same push to master.
+on:
+  push:
+    branches: [master]
+    paths:
+      - docs/**
+      - .github/workflows/docs.yml
+  pull_request:
+    branches: [master]
+    paths:
+      - docs/**
+      - .github/workflows/docs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Not mise-action: the docs project is a standalone npm install that wants
+      # node and nothing else, and mise.toml would drag in biome, dprint, hk,
+      # pkl and zizmor on every run. The node major tracks mise.toml by hand.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      # The theme is a `github:` dependency. npm resolves it over https when no
+      # SSH key is present, so the git+ssh URL in the lockfile is fine here.
+      - run: npm ci
+      - run: npm run build
+      # `path` is workspace-relative; defaults.working-directory only covers `run`.
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: github.event_name != 'pull_request'
+        with:
+          path: docs/dist
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.0
