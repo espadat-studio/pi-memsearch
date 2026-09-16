@@ -26,6 +26,6 @@ Single-context: `CONTEXT.md` + `meta/adr/` at the repo root. See `meta/agents/do
 
 ### Runtime docs
 
-`meta/runtime.md` is the event-by-event contract: hook-to-action ordering, every tunable constant, every degradation path. Read it before changing `src/`.
+[`docs/src/content/docs/runtime.md`](docs/src/content/docs/runtime.md) is the event-by-event contract: hook-to-action ordering, every tunable constant, every degradation path. Read it before changing `src/`. It publishes as <https://pi-memsearch.espadat.com/runtime/>.
 
 Changing runtime behavior means updating it in the same commit — a stale mechanism doc is worse than none, because agents read it as authoritative. `CONTRIBUTING.md` carries the change-to-doc mapping.

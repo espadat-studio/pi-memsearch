@@ -1,8 +1,11 @@
-# Writing a store command
+---
+title: Store command
+description: The `PI_MEMSEARCH_STORE_CMD` contract, the four rules that are easy to get wrong, and a reference resolver.
+---
 
 `PI_MEMSEARCH_STORE_CMD` hands store resolution to a command you own, so pi can join a memory store that lives outside the repos — one central store keyed per repository, say, shared with the other agents in the mesh. Unset, pi resolves everything itself and none of this applies.
 
-Why the seam exists, and what was rejected: [ADR 0007](adr/0007-delegated-store-resolution.md). What pi does with the answers: [`runtime.md`](runtime.md).
+Why the seam exists, and what was rejected: [ADR 0007](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0007-delegated-store-resolution.md). What pi does with the answers: [the runtime page](/runtime/).
 
 ## The contract
 
@@ -84,4 +87,4 @@ Then `memory_status` names the store, the collection and the index-state path it
 
 ## If the store is not named `memory`
 
-Everything works except `memory_compact`, which refuses rather than writing a summary outside the store it summarizes. See the compaction section of [`runtime.md`](runtime.md) and [#92](https://github.com/sripwoud/pi-memsearch/issues/92).
+Everything works except `memory_compact`, which refuses rather than writing a summary outside the store it summarizes. See the compaction section of [the runtime page](/runtime/) and [#92](https://github.com/sripwoud/pi-memsearch/issues/92).

@@ -1,8 +1,11 @@
-# Runtime behavior
+---
+title: Runtime behavior
+description: What pi-memsearch does, in what order, on every pi event — plus every tunable and every way each path degrades.
+---
 
 What pi-memsearch does, in what order, on every pi event — plus every tunable and every way each path degrades.
 
-Scope: pi-memsearch's own orchestration. The upstream memsearch CLI, index lifecycle and collection naming are documented separately in [`research/memsearch.md`](research/memsearch.md); this file does not restate them. Vocabulary: [`../CONTEXT.md`](../CONTEXT.md). Rationale for each design: [`adr/`](adr/).
+Scope: pi-memsearch's own orchestration. The upstream memsearch CLI, index lifecycle and collection naming are documented separately in [the memsearch research note](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/research/memsearch.md); this page does not restate them. Vocabulary: [`CONTEXT.md`](https://github.com/espadat-studio/pi-memsearch/blob/master/CONTEXT.md). Rationale for each design: [the ADRs](https://github.com/espadat-studio/pi-memsearch/tree/master/meta/adr).
 
 Constants are named as they appear in source, so they stay greppable as line numbers drift.
 
@@ -30,7 +33,7 @@ The path it hashes is the project scope, `$MEMSEARCH_DIR` included. That is upst
 
 That rule scopes to the session's own collection. A project cross-repo fan-out merely discovered is named from that project, never from the searching session's `$MEMSEARCH_DIR` — see Cross-repo recall.
 
-**Store command**, opt-in via `PI_MEMSEARCH_STORE_CMD`, takes over the derivations so pi can join a store outside the repos. `<cmd> memory-dir` prints the absolute store directory, `<cmd> collection` the collection name, `<cmd> state-dir` the absolute index-state directory; all run with the working directory set to the directory being resolved. It outranks `MEMSEARCH_DIR`. A non-zero exit, empty output, or a relative path raises an error naming the command and the mode — there is no fallback, because a wrong store means memory written to the wrong place. `state-dir` is the one mode a resolver may decline, by exiting 0 and printing nothing; declining it leaves everything exactly as it was, and any other failure still fails fast. Answers are memoized per command, mode and directory for the life of the process, so capture, the indexer, every tool call, cross-repo fan-out and auto-context share one subprocess per directory. A store that is not itself named `memory` is fine everywhere except `memory_compact`, which refuses on one (see Memory compaction). Cross-repo fan-out asks it about each discovered project directory, which is a store directory rather than a session directory, so a resolver has to answer for a store it is standing in. The current project is exempt: its leg of the fan-out reuses the collection already resolved for the session, at the session's own directory. Unset, a discovered project falls to the two rungs below the command (see Cross-repo recall); set, it answers for every project and the rungs below it never run. Rationale and rejected alternatives: [ADR 0007](adr/0007-delegated-store-resolution.md); how to write one of these commands, with a reference implementation: [`store-command.md`](store-command.md).
+**Store command**, opt-in via `PI_MEMSEARCH_STORE_CMD`, takes over the derivations so pi can join a store outside the repos. `<cmd> memory-dir` prints the absolute store directory, `<cmd> collection` the collection name, `<cmd> state-dir` the absolute index-state directory; all run with the working directory set to the directory being resolved. It outranks `MEMSEARCH_DIR`. A non-zero exit, empty output, or a relative path raises an error naming the command and the mode — there is no fallback, because a wrong store means memory written to the wrong place. `state-dir` is the one mode a resolver may decline, by exiting 0 and printing nothing; declining it leaves everything exactly as it was, and any other failure still fails fast. Answers are memoized per command, mode and directory for the life of the process, so capture, the indexer, every tool call, cross-repo fan-out and auto-context share one subprocess per directory. A store that is not itself named `memory` is fine everywhere except `memory_compact`, which refuses on one (see Memory compaction). Cross-repo fan-out asks it about each discovered project directory, which is a store directory rather than a session directory, so a resolver has to answer for a store it is standing in. The current project is exempt: its leg of the fan-out reuses the collection already resolved for the session, at the session's own directory. Unset, a discovered project falls to the two rungs below the command (see Cross-repo recall); set, it answers for every project and the rungs below it never run. Rationale and rejected alternatives: [ADR 0007](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0007-delegated-store-resolution.md); how to write one of these commands, with a reference implementation: [writing a store command](/store-command/).
 
 **Entry shape** in a daily memory file:
 
@@ -55,7 +58,7 @@ Every settled exchange passes two gates before distillation:
 
 What passes is distilled by the cheapest model of the session's provider by default; `PI_MEMSEARCH_CAPTURE_MODEL` overrides, as `<id>` or `<provider>/<id>` (`src/distillation-model.ts`). Automatic memory therefore does not inflate the bill.
 
-A failed or timed-out distillation writes a diagnostic marker with the session anchor intact. The exchange is never dropped — see [ADR 0002](adr/0002-maximal-capture.md) for why capture is maximal.
+A failed or timed-out distillation writes a diagnostic marker with the session anchor intact. The exchange is never dropped — see [ADR 0002](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0002-maximal-capture.md) for why capture is maximal.
 
 ## Recall
 
@@ -69,7 +72,7 @@ A failed or timed-out distillation writes a diagnostic marker with the session a
 
 Scores are normalized RRF ranks over hybrid dense + BM25 retrieval, **not** cosine similarity — do not interpret them as absolute confidence. An empty result says so; it never invents hits.
 
-L3 exists because L2 sometimes loses the reasoning that produced a decision ([ADR 0006](adr/0006-l3-transcript-tool.md)). It never touches the backend, so it works while memsearch is unavailable.
+L3 exists because L2 sometimes loses the reasoning that produced a decision ([ADR 0006](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0006-l3-transcript-tool.md)). It never touches the backend, so it works while memsearch is unavailable.
 
 ### Cross-repo recall
 
@@ -84,13 +87,13 @@ Opt-in and read-side only. `/recall --all <query>`, or `memory_search` with `sco
 - Expansion follows across repos: pass the hit's origin path as `project` to `memory_expand`. One seam names the collection for both, so search and expansion cannot disagree about a foreign project; an origin equal to the session's own scope reuses the session's collection, exactly as the fan-out's current-project leg does. The returned anchor makes L3 work across projects too.
 - `project` takes a path a fan-out hit was labeled with, which is always a project directory. It is not resolved for a subdirectory: no git walk runs, so a path inside a repo names the subdirectory's collection and finds nothing. Pass the label back verbatim.
 
-Default recall stays project-scoped, and no store or collection is ever written. There is deliberately no global store ([ADR 0003](adr/0003-no-global-store-cross-repo-recall.md)).
+Default recall stays project-scoped, and no store or collection is ever written. There is deliberately no global store ([ADR 0003](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0003-no-global-store-cross-repo-recall.md)).
 
 ## Redaction
 
 `memory_forget` removes exactly one entry from its daily memory file, addressed by `chunk_hash` or `(date, time)` — no fuzzy matching. The entry's chunks leave the collection on the next reindex. A redaction also refreshes the stable snapshot, so the removed text cannot survive in the system prompt.
 
-No copy survives in pi-memsearch: no recovery record, no audit log. The tool result echoing the removed markdown is the only record; salvageable facts re-enter via `memory_write`. Session transcripts and git history are outside the guarantee ([ADR 0004](adr/0004-redaction-over-recovery.md)).
+No copy survives in pi-memsearch: no recovery record, no audit log. The tool result echoing the removed markdown is the only record; salvageable facts re-enter via `memory_write`. Session transcripts and git history are outside the guarantee ([ADR 0004](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0004-redaction-over-recovery.md)).
 
 ## Memory compaction
 
@@ -102,7 +105,7 @@ An LLM condenses the whole memory store and appends the summary to today's daily
 - Refuses on a store directory not named `memory`, naming it, and spends nothing. memsearch appends to `<output dir>/memory/<date>.md`, so a store like `<store-root>/<project>` would put the summary in `<store-root>/memory/`, shared with every sibling project and outside the store it summarizes ([#77](https://github.com/sripwoud/pi-memsearch/issues/77)).
 - Lands as memsearch's own `## Memory Compact` block, outside pi's entry shape. `memory_forget` with a `chunk_hash` from inside it redacts the whole block; a later `memory_compact` regenerates a fresh summary ([#41](https://github.com/sripwoud/pi-memsearch/issues/41)).
 
-Not pi's context compaction — the live conversation is untouched. The two senses are kept distinct throughout ([`../CONTEXT.md`](../CONTEXT.md)).
+Not pi's context compaction — the live conversation is untouched. The two senses are kept distinct throughout ([`CONTEXT.md`](https://github.com/espadat-studio/pi-memsearch/blob/master/CONTEXT.md)).
 
 ## Stable snapshot
 
@@ -119,7 +122,7 @@ Byte-identical between checkpoints, so provider prefix caches survive across tur
 
 ## Auto-context
 
-Opt-in via `PI_MEMSEARCH_AUTO_CONTEXT=on`. Every user prompt runs a semantic search over the project collection and injects the hits as a message invisible in the TUI. Design and rejected alternatives: [ADR 0005](adr/0005-per-session-sidecar-auto-context.md).
+Opt-in via `PI_MEMSEARCH_AUTO_CONTEXT=on`. Every user prompt runs a semantic search over the project collection and injects the hits as a message invisible in the TUI. Design and rejected alternatives: [ADR 0005](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0005-per-session-sidecar-auto-context.md).
 
 | Constant (`src/auto-context.ts`) | Value  | Effect                                                                 |
 | -------------------------------- | ------ | ---------------------------------------------------------------------- |
@@ -157,7 +160,7 @@ Milvus Lite allows a single client at a time, so every memsearch invocation goes
 - `session_shutdown` flushes the pending capture and settles the indexer, racing `SHUTDOWN_CAP_MS` (15 s).
 - `memsearch watch` is never used: pi owns the indexing schedule, and a watcher would fight the queue for the lock.
 - Index state is read from `<store-cmd> state-dir` when the command answers that mode, else from `$MEMSEARCH_DIR/.index-state.json` when that variable is set — memsearch's own state-dir override, and where its child writes the file — else from the root of the `.memsearch` tree the store sits in, else from `.index-state.json` beside the store. The tree root is where memsearch truncates (`index_state.py`), so a store nested deeper than one level under the tree is read from the root too, never from its own parent. That component search follows symlinks through a store directory that does not exist yet, as memsearch does. `memory_status` prints the path it read.
-- A `state-dir` answer is exported as `MEMSEARCH_DIR` to every memsearch child pi spawns — CLI invocations and the auto-context sidecar alike — so the child writes its state file where pi reads it. The exported value is the session's own answer, resolved at `session_start` from the session directory; cross-repo fan-out legs carry it too, which changes nothing because searching never writes state. It overrides an inherited `MEMSEARCH_DIR` for those children only; pi's own environment is untouched. Without the mode, pi sets nothing: memsearch writes `.index-state.json` only inside a `.memsearch` tree or at `$MEMSEARCH_DIR`, so a store command answering outside both and declining `state-dir` forfeits index health and keeps everything else ([ADR 0007](adr/0007-delegated-store-resolution.md)). pi reports no path at all in that case, rather than one nothing will ever write to.
+- A `state-dir` answer is exported as `MEMSEARCH_DIR` to every memsearch child pi spawns — CLI invocations and the auto-context sidecar alike — so the child writes its state file where pi reads it. The exported value is the session's own answer, resolved at `session_start` from the session directory; cross-repo fan-out legs carry it too, which changes nothing because searching never writes state. It overrides an inherited `MEMSEARCH_DIR` for those children only; pi's own environment is untouched. Without the mode, pi sets nothing: memsearch writes `.index-state.json` only inside a `.memsearch` tree or at `$MEMSEARCH_DIR`, so a store command answering outside both and declining `state-dir` forfeits index health and keeps everything else ([ADR 0007](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0007-delegated-store-resolution.md)). pi reports no path at all in that case, rather than one nothing will ever write to.
 
 ## Degradation
 
@@ -186,6 +189,6 @@ Concurrent writers on one shared daily memory file — parallel worktree session
 | A session never duplicates its own heading                      | The `## Session` decision is answered from process state, seeded by one read at that session's first write to the file |
 | A resumed session's first write can still duplicate its heading | A fresh process re-seeds by reading, and can lose the race with another writer at that instant                         |
 
-So the worst a race costs is a duplicate heading in the markdown, never a lost entry. A lock would only serialize anything if every writer took it, which makes it a convention to propose to the mesh rather than one pi adopts alone ([ADR 0001](adr/0001-mesh-parity.md)).
+So the worst a race costs is a duplicate heading in the markdown, never a lost entry. A lock would only serialize anything if every writer took it, which makes it a convention to propose to the mesh rather than one pi adopts alone ([ADR 0001](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0001-mesh-parity.md)).
 
 `memory_status` reports what is missing, the active config, the index state — including memsearch's own `degraded` status and per-file failures — the chunk count, and the auto-context state with its counters.
