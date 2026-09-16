@@ -9,13 +9,20 @@ const SITE_PAGES = 'docs/src/content/docs'
 const INLINE_LINK = /\]\(([^)\s]+)\)/g
 const MARKER = '<!-- x-release-please-version -->'
 
-test('every relative markdown link resolves', () => {
+test('every relative markdown link resolves, anchor included', () => {
   const broken: string[] = []
   for (const file of repoMarkdown()) {
     const body = readFileSync(join(repo, file), 'utf8')
     for (const match of body.matchAll(INLINE_LINK)) {
-      const path = localPath(file, match[1] ?? '')
-      if (path && !existsSync(path)) broken.push(`${file} → ${match[1]}`)
+      const target = match[1] ?? ''
+      const path = localPath(file, target)
+      if (!path) continue
+      if (!existsSync(path)) {
+        broken.push(`${file} → ${target} (no such file)`)
+        continue
+      }
+      const [, anchor] = target.split('#')
+      if (anchor && !headingSlugs(path).has(anchor)) broken.push(`${file} → ${target} (no such heading)`)
     }
   }
   ok(broken.length === 0, `unresolved links:\n${broken.join('\n')}`)
@@ -54,10 +61,28 @@ function repoMarkdown(): string[] {
   return listed.split('\n').filter((file) => file && file !== 'CHANGELOG.md')
 }
 
+// Heading ids as github-slugger builds them, which is what Starlight and GitHub
+// both anchor to: formatting dropped, punctuation dropped, spaces hyphenated.
+function headingSlugs(path: string): Set<string> {
+  const headings = readFileSync(path, 'utf8').matchAll(/^#{1,6} +(.+)$/gm)
+  return new Set(
+    [...headings].map(([, heading]) =>
+      (heading ?? '')
+        .replace(/[`*]/g, '')
+        .toLowerCase()
+        .replace(/[^\w\- ]/g, '')
+        .trim()
+        .replace(/ +/g, '-')
+    ),
+  )
+}
+
 // The local file a link target names, or null when nothing local is addressed.
 function localPath(file: string, target: string): string | null {
   const [path] = target.split('#')
-  if (!path || /^[a-z]+:/.test(target) || target.startsWith('#')) return null
+  if (/^[a-z]+:/.test(target)) return null
+  if (target.startsWith('#')) return join(repo, file)
+  if (!path) return null
   // Site pages link each other by Starlight slug, rooted at the docs collection.
   if (path.startsWith('/')) {
     if (!file.startsWith(SITE_PAGES)) return null

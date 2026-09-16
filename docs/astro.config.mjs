@@ -41,6 +41,14 @@ export default defineConfig({
             { label: 'Store command', slug: 'store-command' },
           ],
         },
+        {
+          label: 'Operations',
+          items: [
+            { label: 'Troubleshooting', slug: 'troubleshooting' },
+            { label: 'Limits', slug: 'limits' },
+          ],
+        },
+        { label: 'Development', slug: 'development' },
       ],
     }),
   ],

@@ -37,6 +37,8 @@ After that, leave it alone. Capture runs on every settled exchange, and the stor
 
 `memory_status` is the doctor. Ask for it in a session and it reports uv and memsearch presence and version, the resolved scope and collection, the index state and chunk count, and the auto-context state with its counters.
 
+If anything looks wrong, [troubleshooting](/troubleshooting/) is built around reading that output.
+
 ## Uninstall
 
 ```sh
