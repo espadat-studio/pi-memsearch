@@ -28,6 +28,13 @@ export default defineConfig({
       sidebar: [
         { label: 'Home', link: '/' },
         {
+          label: 'Getting Started',
+          items: [
+            { label: 'Install', slug: 'install' },
+            { label: 'Configuration', slug: 'configuration' },
+          ],
+        },
+        {
           label: 'Reference',
           items: [
             { label: 'Runtime', slug: 'runtime' },

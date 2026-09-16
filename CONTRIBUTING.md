@@ -76,7 +76,7 @@ Release-As: 1.2.3"
 
 Use the version you actually want; `Release-As:` is honored whatever the commit type.
 
-> **Note** — `README.md` carries `<!-- x-release-please-version -->` on its "Current release" line, wired through `extra-files` in `release-please-config.json`. Rewriting the README without that marker silently stops the version line from updating.
+> **Note** — the README and the site's install page each state the current release on a line carrying an `x-release-please-version` marker, wired through `extra-files` in `release-please-config.json`. The marker and the entry are two halves of one mechanism: rewriting a page without the marker silently freezes the version, and `test/docs.test.ts` fails on either half missing.
 
 Raising the memsearch version ceiling in `src/contract.ts`, or the pi peer range in `package.json`, is a deliberate act: bump it, then re-run the integration suite on that line. Type those commits `feat:` (widened support) or `fix:` / `feat!:`. **Never `build:`** — it cuts no release, so the widened support would never reach a consumer. `build:` is for the lockfile and devDependencies, which never ship.
 
