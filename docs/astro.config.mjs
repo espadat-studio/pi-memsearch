@@ -1,10 +1,12 @@
 import starlight from '@astrojs/starlight'
 import { defineConfig } from 'astro/config'
+import starlightLlmsTxt from 'starlight-llms-txt'
 
 export default defineConfig({
   site: 'https://pi-memsearch.espadat.com',
   integrations: [
     starlight({
+      plugins: [starlightLlmsTxt()],
       title: 'pi-memsearch',
       description:
         'Long-term memory for pi: recall what a session learned weeks later, by meaning, from the memsearch store Claude Code, Codex, OpenClaw and OpenCode share.',
