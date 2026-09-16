@@ -37,6 +37,8 @@ export default defineConfig({
         {
           label: 'Reference',
           items: [
+            { label: 'Tools', slug: 'tools' },
+            { label: 'Memory store', slug: 'memory-store' },
             { label: 'Runtime', slug: 'runtime' },
             { label: 'Store command', slug: 'store-command' },
           ],
