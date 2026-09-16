@@ -9,7 +9,7 @@
 
 pi ships no memory by design — "primitives, not features". This package gives it long-term memory through [memsearch](https://zilliztech.github.io/memsearch/), the same per-project memory store Claude Code, Codex, OpenClaw and OpenCode already write to.
 
-- **Recall in the phrasing you use weeks later**: **32/35** strong hits vs **26/35** for `pi-memory`'s qmd backend, over 35 queries against an identical 223-file corpus ([benchmark](docs/research/memsearch-vs-pi-memory-benchmark.md)).
+- **Recall in the phrasing you use weeks later**: **32/35** strong hits vs **26/35** for `pi-memory`'s qmd backend, over 35 queries against an identical 223-file corpus ([benchmark](meta/research/memsearch-vs-pi-memory-benchmark.md)).
 - **Cross-agent**: pi recalls what Claude Code learned yesterday in the same repo, and vice versa.
 - **Plain markdown** under `.memsearch/`, yours to commit or gitignore.
 
@@ -39,7 +39,7 @@ pi  ▸ memory_search → 5 chunks; top: 2026-08-13 "moved the hot cache to Redi
 | Strong hits, 35 queries / 223 files | **32/35**    | 26/35       |
 | Store scope                         | per git root | user-global |
 
-They tie on short keyword queries; memsearch wins on paraphrased and natural-question recall — the phrasing you use when asking "how did we fix X?" weeks later. Method and per-query results: [`docs/research/memsearch-vs-pi-memory-benchmark.md`](docs/research/memsearch-vs-pi-memory-benchmark.md).
+They tie on short keyword queries; memsearch wins on paraphrased and natural-question recall — the phrasing you use when asking "how did we fix X?" weeks later. Method and per-query results: [`meta/research/memsearch-vs-pi-memory-benchmark.md`](meta/research/memsearch-vs-pi-memory-benchmark.md).
 
 memsearch already integrates Claude Code, OpenClaw, OpenCode and Codex CLI, all sharing one markdown format and one collection-name derivation. This package joins pi to that mesh.
 
@@ -80,9 +80,9 @@ Markdown is the source of truth; the collection is derived and rebuildable at an
 
 - **Location**: `<project>/.memsearch/memory/YYYY-MM-DD.md` — one daily memory file per calendar day, appended to by every agent in the mesh.
 - **Git**: commit `.memsearch/` to share memory with collaborators, or gitignore it to keep it personal — the collection lives in `~/.memsearch/milvus.db` either way, so the choice costs nothing.
-- **Scope**: `$MEMSEARCH_DIR`, else the git root, else the working directory — memsearch's own resolution order. A relative `$MEMSEARCH_DIR` resolves where memsearch's own children run — the git root, else the directory pi started in — so a session in a subdirectory shares one store with the CLI rather than writing beside it. A store left at a subdirectory path by an older pi-memsearch is not migrated. To put the store somewhere else entirely, `$PI_MEMSEARCH_STORE_CMD` hands the store path, the collection name and the index-state directory to a command of your own — [how to write one](docs/store-command.md), [why it exists](docs/adr/0007-delegated-store-resolution.md).
+- **Scope**: `$MEMSEARCH_DIR`, else the git root, else the working directory — memsearch's own resolution order. A relative `$MEMSEARCH_DIR` resolves where memsearch's own children run — the git root, else the directory pi started in — so a session in a subdirectory shares one store with the CLI rather than writing beside it. A store left at a subdirectory path by an older pi-memsearch is not migrated. To put the store somewhere else entirely, `$PI_MEMSEARCH_STORE_CMD` hands the store path, the collection name and the index-state directory to a command of your own — [how to write one](meta/store-command.md), [why it exists](meta/adr/0007-delegated-store-resolution.md).
 
-Collection naming, the entry shape, and the session anchor that lets any memory entry trace back to the conversation that produced it: [`docs/runtime.md`](docs/runtime.md).
+Collection naming, the entry shape, and the session anchor that lets any memory entry trace back to the conversation that produced it: [`meta/runtime.md`](meta/runtime.md).
 
 ## Tools
 
@@ -109,10 +109,10 @@ Everything shared with the mesh — provider, model, chunking — lives in memse
 | `PI_MEMSEARCH_SEARCH_TIMEOUT_MS`  | `30000`                                | Per-attempt timeout for `memory_search` (each cross-repo invocation too)                                                                                                                                  |
 | `PI_MEMSEARCH_COMPACT_TIMEOUT_MS` | `300000`                               | Per-attempt timeout for `memory_compact` (LLM pass plus reindex)                                                                                                                                          |
 | `PI_MEMSEARCH_SCAN_ROOTS`         | unset                                  | `:`-separated directory roots scanned for other projects' memory stores; required by cross-repo recall                                                                                                    |
-| `PI_MEMSEARCH_STORE_CMD`          | unset                                  | Command printing the store path (`memory-dir`), the collection (`collection`) and optionally the index-state dir (`state-dir`); outranks `MEMSEARCH_DIR`. [Contract and reference](docs/store-command.md) |
+| `PI_MEMSEARCH_STORE_CMD`          | unset                                  | Command printing the store path (`memory-dir`), the collection (`collection`) and optionally the index-state dir (`state-dir`); outranks `MEMSEARCH_DIR`. [Contract and reference](meta/store-command.md) |
 | `MEMSEARCH_DIR`                   | unset                                  | memsearch's own scope override; the memory store and collection follow it. A relative path resolves where the memsearch children run                                                                      |
 
-Auto-context races a 300 ms hard cap and costs ~0.7–1.0 GB resident memory while on. A deadline miss, an empty result or a locked store all degrade to no injection, so a prompt never waits on memory; remote embedding providers will often miss the cap. Every tunable, and how the sidecar borrows the Milvus lock per prompt: [`docs/runtime.md`](docs/runtime.md#auto-context).
+Auto-context races a 300 ms hard cap and costs ~0.7–1.0 GB resident memory while on. A deadline miss, an empty result or a locked store all degrade to no injection, so a prompt never waits on memory; remote embedding providers will often miss the cap. Every tunable, and how the sidecar borrows the Milvus lock per prompt: [`meta/runtime.md`](meta/runtime.md#auto-context).
 
 ## Troubleshooting
 
@@ -146,10 +146,10 @@ Availability is re-probed with a short negative cache, so installing `uv` mid-se
 
 ## How it works
 
-- Hook-by-hook behavior, every tunable, every degradation path: [`docs/runtime.md`](docs/runtime.md)
+- Hook-by-hook behavior, every tunable, every degradation path: [`meta/runtime.md`](meta/runtime.md)
 - Vocabulary: [`CONTEXT.md`](CONTEXT.md)
-- Decisions and rejected alternatives: [`docs/adr/`](docs/adr/) — mesh parity ([0001](docs/adr/0001-mesh-parity.md)) constrains the rest
-- Benchmarks and the upstream memsearch contract: [`docs/research/`](docs/research/)
+- Decisions and rejected alternatives: [`meta/adr/`](meta/adr/) — mesh parity ([0001](meta/adr/0001-mesh-parity.md)) constrains the rest
+- Benchmarks and the upstream memsearch contract: [`meta/research/`](meta/research/)
 
 ## Development
 

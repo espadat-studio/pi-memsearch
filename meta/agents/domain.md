@@ -5,7 +5,7 @@ How the engineering skills should consume this repo's domain documentation when 
 ## Before exploring, read these
 
 - **`CONTEXT.md`** at the repo root
-- **`docs/adr/`** — read ADRs that touch the area you're about to work in
+- **`meta/adr/`** — read ADRs that touch the area you're about to work in
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
 
@@ -16,12 +16,14 @@ Single-context repo:
 ```
 /
 ├── CONTEXT.md
-├── docs/adr/
+├── meta/adr/
 │   ├── 0001-mesh-parity.md
 │   ├── 0002-maximal-capture.md
 │   └── 0003-no-global-store-cross-repo-recall.md
 └── src/
 ```
+
+New ADRs go under `meta/adr/`. `docs/` is reserved for the published site, so an ADR written there lands in a build directory.
 
 ## Use the glossary's vocabulary
 

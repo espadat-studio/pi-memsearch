@@ -26,15 +26,15 @@ The integration suite in `test/integration/` runs against real memsearch and is 
 
 ## Documentation
 
-`docs/runtime.md` is the event-by-event contract that dev agents read before touching `src/`. **A PR that changes runtime behavior updates it in the same commit.** A stale mechanism doc is worse than none, because agents read it as authoritative.
+`meta/runtime.md` is the event-by-event contract that dev agents read before touching `src/`. **A PR that changes runtime behavior updates it in the same commit.** A stale mechanism doc is worse than none, because agents read it as authoritative.
 
 | Change                                                    | Also update                                  |
 | --------------------------------------------------------- | -------------------------------------------- |
-| A hook registration, or the order within one              | `docs/runtime.md` → Hook to action           |
-| A tunable constant                                        | `docs/runtime.md` → the section that owns it |
-| A new failure or degradation path                         | `docs/runtime.md` → Degradation              |
+| A hook registration, or the order within one              | `meta/runtime.md` → Hook to action           |
+| A tunable constant                                        | `meta/runtime.md` → the section that owns it |
+| A new failure or degradation path                         | `meta/runtime.md` → Degradation              |
 | A new domain term, or a term you had to think twice about | `CONTEXT.md`                                 |
-| A decision with a rejected alternative worth recording    | a new `docs/adr/` entry                      |
+| A decision with a rejected alternative worth recording    | a new `meta/adr/` entry                      |
 
 ## Release
 
@@ -63,7 +63,7 @@ What ships in the tarball, and therefore needs a releasable type when it changes
 | -------------------------------------------------------------- | ----- | ------------------------- |
 | `extensions/`, `prompts/`, `skills/`, `src/`                   | yes   | `package.json` `files`    |
 | `README.md`, `LICENSE`, `package.json`                         | yes   | npm always includes these |
-| `docs/`, `CONTRIBUTING.md`, `AGENTS.md`, `CONTEXT.md`, `test/` | no    | GitHub only               |
+| `meta/`, `CONTRIBUTING.md`, `AGENTS.md`, `CONTEXT.md`, `test/` | no    | GitHub only               |
 
 A README-only change is consumer-facing — the README is the npm and `pi.dev/packages` landing page — so type it `fix:`. If it already merged as `docs:`, force the release instead:
 
