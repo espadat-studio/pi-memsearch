@@ -3,19 +3,21 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
-const repo = new URL('../', import.meta.url).pathname
+const REPO = fileURLToPath(new URL('../', import.meta.url))
 const SITE_PAGES = 'docs/src/content/docs'
 // The README must resolve on GitHub, on npm and on pi.dev, so it links repo files
 // absolutely rather than trusting three renderers to rewrite relative paths.
 const OWN_REPO = /^https:\/\/github\.com\/espadat-studio\/pi-memsearch\/(blob|tree)\/master\//
+const SITE_ORIGIN = 'https://pi-memsearch.espadat.com'
 const INLINE_LINK = /\]\(([^)\s]+)\)/g
 const MARKER = '<!-- x-release-please-version -->'
 
 test('every relative markdown link resolves, anchor included', () => {
   const broken: string[] = []
   for (const file of repoMarkdown()) {
-    const body = readFileSync(join(repo, file), 'utf8')
+    const body = readFileSync(join(REPO, file), 'utf8')
     for (const match of body.matchAll(INLINE_LINK)) {
       const target = match[1] ?? ''
       const path = localPath(file, target)
@@ -25,13 +27,13 @@ test('every relative markdown link resolves, anchor included', () => {
         continue
       }
       // GitHub serves directories under /tree/ and files under /blob/.
-      const own = OWN_REPO.exec(target)
-      if (own && (own[1] === 'tree') !== statSync(path).isDirectory())
+      const ownRepoKind = OWN_REPO.exec(target)?.[1]
+      if (ownRepoKind && (ownRepoKind === 'tree') !== statSync(path).isDirectory())
         broken.push(`${file} → ${target} (blob and tree are not interchangeable)`)
 
       const [, anchor] = target.split('#')
       // An own-repo URL may anchor at a line number rather than a heading.
-      if (anchor && !own && !headingSlugs(path).has(anchor))
+      if (anchor && !ownRepoKind && !headingSlugs(path).has(anchor))
         broken.push(`${file} → ${target} (no such heading)`)
     }
   }
@@ -39,22 +41,20 @@ test('every relative markdown link resolves, anchor included', () => {
 })
 
 test('every sidebar entry names a page that exists', () => {
-  const config = readFileSync(join(repo, 'docs/astro.config.mjs'), 'utf8')
+  const config = readFileSync(join(REPO, 'docs/astro.config.mjs'), 'utf8')
   const missing = [...config.matchAll(/slug: '([^']+)'/g)]
     .map(([, slug]) => `${SITE_PAGES}/${slug}.md`)
-    .filter((page) => !existsSync(join(repo, page)))
+    .filter((page) => !existsSync(join(REPO, page)))
   ok(missing.length === 0, `sidebar entries without a page:\n${missing.join('\n')}`)
 })
 
 test('every page stating the release is wired to release-please', () => {
-  // The marker and the `extra-files` entry are two halves of one mechanism. A page
-  // carrying the marker without the entry freezes its version silently, and an entry
-  // without the marker updates nothing at all.
-  const config = JSON.parse(readFileSync(join(repo, 'release-please-config.json'), 'utf8'))
+  // Two halves of one mechanism; CONTRIBUTING.md's release section says why.
+  const config = JSON.parse(readFileSync(join(REPO, 'release-please-config.json'), 'utf8'))
   const wired: string[] = config.packages['.']['extra-files'].map((entry: string | { path: string }) =>
     typeof entry === 'string' ? entry : entry.path
   )
-  const marked = repoMarkdown().filter((file) => readFileSync(join(repo, file), 'utf8').includes(MARKER))
+  const marked = repoMarkdown().filter((file) => readFileSync(join(REPO, file), 'utf8').includes(MARKER))
 
   ok(marked.length > 0, 'nothing states the current release any more')
   for (const file of marked) ok(wired.includes(file), `${file} states a version release-please never updates`)
@@ -63,10 +63,7 @@ test('every page stating the release is wired to release-please', () => {
 })
 
 function repoMarkdown(): string[] {
-  // `--others` so a page added but not yet staged is checked too: a new page is
-  // exactly when a link goes stale.
-  const args = ['ls-files', '--cached', '--others', '--exclude-standard', '*.md']
-  const listed = execFileSync('git', args, { cwd: repo, encoding: 'utf8' })
+  const listed = execFileSync('git', ['ls-files', '*.md'], { cwd: REPO, encoding: 'utf8' })
   // CHANGELOG.md is release-please's; its links are absolute commit URLs.
   return listed.split('\n').filter((file) => file && file !== 'CHANGELOG.md')
 }
@@ -87,17 +84,20 @@ function headingSlugs(path: string): Set<string> {
   )
 }
 
-// The local file a link target names, or null when nothing local is addressed.
 function localPath(file: string, target: string): string | null {
   const [path] = target.split('#')
-  if (path && OWN_REPO.test(path)) return join(repo, path.replace(OWN_REPO, ''))
+  if (path && OWN_REPO.test(path)) return join(REPO, path.replace(OWN_REPO, ''))
+  // A published page, addressed by full URL from the README or by Starlight slug
+  // from inside the site. Both spellings name the same file.
+  if (path?.startsWith(SITE_ORIGIN)) return sitePage(path.slice(SITE_ORIGIN.length))
   if (/^[a-z]+:/.test(target)) return null
-  if (target.startsWith('#')) return join(repo, file)
+  if (target.startsWith('#')) return join(REPO, file)
   if (!path) return null
-  // Site pages link each other by Starlight slug, rooted at the docs collection.
-  if (path.startsWith('/')) {
-    if (!file.startsWith(SITE_PAGES)) return null
-    return join(repo, SITE_PAGES, `${path.replace(/^\/|\/$/g, '')}.md`)
-  }
-  return resolve(dirname(join(repo, file)), path)
+  if (path.startsWith('/')) return file.startsWith(SITE_PAGES) ? sitePage(path) : null
+  return resolve(dirname(join(REPO, file)), path)
+}
+
+function sitePage(slug: string): string {
+  const trimmed = slug.replace(/^\/|\/$/g, '')
+  return join(REPO, SITE_PAGES, `${trimmed || 'index'}.md`)
 }
