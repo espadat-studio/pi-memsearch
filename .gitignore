@@ -11,3 +11,5 @@ bun.lock
 
 *.log
 
+# astro (docs site); docs/dist and docs/node_modules match the patterns above
+docs/.astro/
