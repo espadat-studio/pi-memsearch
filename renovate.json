@@ -41,7 +41,7 @@
     {
       "description": "The docs site under `docs/`. Its `dependencies` would take `fix(deps)` from config:recommended's :semanticPrefixFixDepsChoreOthers, and release-please cuts a patch release from a `fix` - so a Starlight or theme bump would publish an npm version whose `files` list does not even contain `docs/`. Docs dependencies never reach the package.",
       "matchFileNames": [
-        "docs/package.json"
+        "docs/**"
       ],
       "semanticCommitType": "chore",
       "semanticCommitScope": "deps"
