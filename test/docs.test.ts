@@ -1,11 +1,14 @@
 import { ok } from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
 
 const repo = new URL('../', import.meta.url).pathname
 const SITE_PAGES = 'docs/src/content/docs'
+// The README must resolve on GitHub, on npm and on pi.dev, so it links repo files
+// absolutely rather than trusting three renderers to rewrite relative paths.
+const OWN_REPO = /^https:\/\/github\.com\/espadat-studio\/pi-memsearch\/(blob|tree)\/master\//
 const INLINE_LINK = /\]\(([^)\s]+)\)/g
 const MARKER = '<!-- x-release-please-version -->'
 
@@ -21,8 +24,15 @@ test('every relative markdown link resolves, anchor included', () => {
         broken.push(`${file} → ${target} (no such file)`)
         continue
       }
+      // GitHub serves directories under /tree/ and files under /blob/.
+      const own = OWN_REPO.exec(target)
+      if (own && (own[1] === 'tree') !== statSync(path).isDirectory())
+        broken.push(`${file} → ${target} (blob and tree are not interchangeable)`)
+
       const [, anchor] = target.split('#')
-      if (anchor && !headingSlugs(path).has(anchor)) broken.push(`${file} → ${target} (no such heading)`)
+      // An own-repo URL may anchor at a line number rather than a heading.
+      if (anchor && !own && !headingSlugs(path).has(anchor))
+        broken.push(`${file} → ${target} (no such heading)`)
     }
   }
   ok(broken.length === 0, `unresolved links:\n${broken.join('\n')}`)
@@ -80,6 +90,7 @@ function headingSlugs(path: string): Set<string> {
 // The local file a link target names, or null when nothing local is addressed.
 function localPath(file: string, target: string): string | null {
   const [path] = target.split('#')
+  if (path && OWN_REPO.test(path)) return join(repo, path.replace(OWN_REPO, ''))
   if (/^[a-z]+:/.test(target)) return null
   if (target.startsWith('#')) return join(repo, file)
   if (!path) return null

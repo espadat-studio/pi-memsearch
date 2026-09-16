@@ -41,4 +41,11 @@ pi  ▸ memory_search → 5 chunks; top: 2026-08-13 "moved the hot cache to Redi
 
 ## Where the rest lives
 
-Installation detail, configuration, the seven tools and the runtime contract are still on the [README](https://github.com/espadat-studio/pi-memsearch#readme) and move here next.
+- [Install](/install/) — prerequisites, the four install forms, first run, uninstall
+- [Configuration](/configuration/) — every `PI_MEMSEARCH_*` variable, and the line between pi's config and memsearch's own
+- [Tools](/tools/) — the seven tools, and the three-rung recall ladder
+- [Memory store](/memory-store/) — the daily markdown files, and which store a session writes to
+- [Runtime](/runtime/) — hook-by-hook behavior, every tunable, every degradation path
+- [Troubleshooting](/troubleshooting/) — start with `memory_status`
+- [Limits](/limits/) — what is deliberately unsupported, and how it compares to `pi-memory`
+- [Development](/development/) — the mise tasks, and the no-build-step jiti loading
