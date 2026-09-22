@@ -2,6 +2,8 @@ import { doesNotMatch, equal, match, ok } from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
+import { parse } from 'yaml'
+
 import { MEMSEARCH_SPEC } from '../src/contract.ts'
 
 const SKILL_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -16,13 +18,7 @@ function parseResource(relativePath: string): Resource {
   const text = readFileSync(new URL(relativePath, import.meta.url), 'utf8')
   const parts = /^---\n([\s\S]+?)\n---\n([\s\S]*)$/.exec(text)
   if (!parts) throw new Error(`${relativePath} has no frontmatter block`)
-  const fields: Record<string, string> = {}
-  for (const line of (parts[1] as string).split('\n')) {
-    const separator = line.indexOf(':')
-    if (separator === -1) throw new Error(`${relativePath} frontmatter line is not "key: value": "${line}"`)
-    fields[line.slice(0, separator).trim()] = line.slice(separator + 1).trim()
-  }
-  return { body: parts[2] as string, fields }
+  return { body: parts[2] as string, fields: parse(parts[1] as string) as Record<string, string> }
 }
 
 test('recall skill frontmatter satisfies the agent-skills spec', () => {
