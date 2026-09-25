@@ -14,6 +14,7 @@ import {
   type SkillsStatus,
 } from './contract.ts'
 import type { ExecFn, ExecResult } from './exec.ts'
+import type { CollectionRef } from './scope.ts'
 
 const VERSION_TIMEOUT_MS = 60_000
 const CONFIG_TIMEOUT_MS = 10_000
@@ -60,20 +61,26 @@ export class MissingCollectionError extends Error {
 }
 
 export interface CommandOptions {
+  cwd?: string
   onQueued?(holder: string): void
   signal?: AbortSignal
 }
 
 export interface Backend {
-  compact(outputDir: string, collection: string, options?: CommandOptions): Promise<string | undefined>
+  compact(outputDir: string, collection: CollectionRef, options?: CommandOptions): Promise<string | undefined>
   configGet(key: string, options?: CommandOptions): Promise<string>
   configSet(key: string, value: string, options?: CommandOptions): Promise<void>
-  expand(chunkHash: string, collection: string, options?: CommandOptions): Promise<ExpandedSection>
-  index(path: string, collection: string, options?: CommandOptions): Promise<number>
+  expand(chunkHash: string, collection: CollectionRef, options?: CommandOptions): Promise<ExpandedSection>
+  index(path: string, collection: CollectionRef, options?: CommandOptions): Promise<number>
   probe(options?: CommandOptions): Promise<Availability>
-  search(query: string, collection: string, options?: CommandOptions & { topK?: number }): Promise<SearchHit[]>
+  resolveCollection(collection: CollectionRef, dir: string, options?: CommandOptions): Promise<string>
+  search(query: string, collection: CollectionRef, options?: CommandOptions & { topK?: number }): Promise<SearchHit[]>
   skillsStatus(options?: CommandOptions): Promise<SkillsStatus>
-  stats(collection: string, options?: CommandOptions): Promise<number | 'missing'>
+  stats(collection: CollectionRef, options?: CommandOptions): Promise<number | 'missing'>
+}
+
+export function collectionArgs(collection: CollectionRef): string[] {
+  return [collection.kind === 'explicit' ? '-c' : '--default-collection', collection.name]
 }
 
 export interface BackendDeps {
@@ -89,6 +96,7 @@ export function createBackend(deps: BackendDeps): Backend {
   let tail: Promise<unknown> = Promise.resolve()
   const queuedLabels: string[] = []
   let probeCache: { expiresAtMs?: number; result: Promise<Availability> } | undefined
+  const resolvedNames = new Map<string, Promise<string>>()
 
   function enqueue<T>(label: string, options: CommandOptions, task: () => Promise<T>): Promise<T> {
     const holder = queuedLabels[0]
@@ -109,7 +117,11 @@ export function createBackend(deps: BackendDeps): Backend {
         const result = await deps.exec(
           'uvx',
           ['--from', MEMSEARCH_SPEC, 'memsearch', ...args],
-          options.signal ? { signal: options.signal, timeoutMs } : { timeoutMs },
+          {
+            timeoutMs,
+            ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+            ...(options.signal ? { signal: options.signal } : {}),
+          },
         )
         if (result.exitCode !== 0 && isLockContention(result.stderr) && attempt < BACKOFF_DELAYS_MS.length) {
           await deps.sleep(BACKOFF_DELAYS_MS[attempt] as number)
@@ -182,13 +194,13 @@ export function createBackend(deps: BackendDeps): Backend {
     args: string[],
     timeoutMs: number,
     options: CommandOptions,
-    collection?: string,
+    collection?: CollectionRef,
   ): Promise<ExecResult> {
     await ensureAvailable(options)
     const result = await invoke(holderLabel(name), args, timeoutMs, options)
     if (result.exitCode !== 0) {
       if (collection !== undefined && isMissingCollection(result.stderr))
-        throw new MissingCollectionError(name, collection)
+        throw new MissingCollectionError(name, collection.name)
       throw commandError(name, result, timeoutMs)
     }
     return result
@@ -196,17 +208,21 @@ export function createBackend(deps: BackendDeps): Backend {
 
   async function search(
     query: string,
-    collection: string,
+    collection: CollectionRef,
     options: CommandOptions & { topK?: number } = {},
   ): Promise<SearchHit[]> {
     const topK = options.topK ?? DEFAULT_TOP_K
-    const args = ['search', '-j', '-k', String(topK), '-c', collection, '--', query]
+    const args = ['search', '-j', '-k', String(topK), ...collectionArgs(collection), '--', query]
     const result = await runCommand('search', args, searchTimeoutMs, options, collection)
     return parseSearchHits(result.stdout)
   }
 
-  async function expand(chunkHash: string, collection: string, options: CommandOptions = {}): Promise<ExpandedSection> {
-    const args = ['expand', '-j', '-c', collection, '--', chunkHash]
+  async function expand(
+    chunkHash: string,
+    collection: CollectionRef,
+    options: CommandOptions = {},
+  ): Promise<ExpandedSection> {
+    const args = ['expand', '-j', ...collectionArgs(collection), '--', chunkHash]
     const result = await runCommand('expand', args, EXPAND_TIMEOUT_MS, options, collection)
     return parseExpandedSection(result.stdout)
   }
@@ -216,22 +232,36 @@ export function createBackend(deps: BackendDeps): Backend {
     return result.stdout.trim()
   }
 
+  function resolveCollection(collection: CollectionRef, dir: string, options: CommandOptions = {}): Promise<string> {
+    if (collection.kind === 'explicit') return Promise.resolve(collection.name)
+    const key = `${dir}\0${collection.name}`
+    const cached = resolvedNames.get(key)
+    if (cached !== undefined) return cached
+    const args = ['config', 'get', 'milvus.collection', ...collectionArgs(collection)]
+    const resolved = runCommand('config get', args, CONFIG_TIMEOUT_MS, { ...options, cwd: dir }).then(
+      (result) => result.stdout.trim(),
+    )
+    resolvedNames.set(key, resolved)
+    resolved.catch(() => resolvedNames.delete(key))
+    return resolved
+  }
+
   async function configSet(key: string, value: string, options: CommandOptions = {}): Promise<void> {
     await runCommand('config set', ['config', 'set', key, value], CONFIG_TIMEOUT_MS, options)
   }
 
   async function compact(
     outputDir: string,
-    collection: string,
+    collection: CollectionRef,
     options: CommandOptions = {},
   ): Promise<string | undefined> {
-    const args = ['compact', '-o', outputDir, '-c', collection]
+    const args = ['compact', '-o', outputDir, ...collectionArgs(collection)]
     const result = await runCommand('compact', args, compactTimeoutMs, options)
     return parseCompactSummary(result.stdout)
   }
 
-  async function index(path: string, collection: string, options: CommandOptions = {}): Promise<number> {
-    const result = await runCommand('index', ['index', path, '-c', collection], INDEX_TIMEOUT_MS, options)
+  async function index(path: string, collection: CollectionRef, options: CommandOptions = {}): Promise<number> {
+    const result = await runCommand('index', ['index', path, ...collectionArgs(collection)], INDEX_TIMEOUT_MS, options)
     return parseIndexedChunks(result.stdout)
   }
 
@@ -240,9 +270,9 @@ export function createBackend(deps: BackendDeps): Backend {
     return parseSkillsStatus(result.stdout)
   }
 
-  async function stats(collection: string, options: CommandOptions = {}): Promise<number | 'missing'> {
+  async function stats(collection: CollectionRef, options: CommandOptions = {}): Promise<number | 'missing'> {
     await ensureAvailable(options)
-    const result = await invoke('stats', ['stats', '-c', collection], STATS_TIMEOUT_MS, options)
+    const result = await invoke('stats', ['stats', ...collectionArgs(collection)], STATS_TIMEOUT_MS, options)
     if (result.exitCode !== 0) {
       if (isMissingCollection(result.stderr)) return 'missing'
       throw commandError('stats', result, STATS_TIMEOUT_MS)
@@ -250,7 +280,7 @@ export function createBackend(deps: BackendDeps): Backend {
     return parseChunkCount(result.stdout)
   }
 
-  return { compact, configGet, configSet, expand, index, probe, search, skillsStatus, stats }
+  return { compact, configGet, configSet, expand, index, probe, resolveCollection, search, skillsStatus, stats }
 }
 
 function resolveTimeoutMs(env: NodeJS.ProcessEnv, key: string, fallback: number): number {

@@ -12,6 +12,8 @@ Configuration lives on two surfaces, deliberately separate.
 
 Anything that changes what the store looks like to another agent belongs upstream in memsearch's config, so Claude Code, Codex, OpenClaw, OpenCode and pi keep reading one store the same way ([ADR 0001, mesh parity](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0001-mesh-parity.md)). pi-memsearch adds no config of its own for those.
 
+That includes the collection. pi's derived collection name is only a default: a `[milvus].collection` in `~/.memsearch/config.toml` outranks it, and one in the project's `.memsearch.toml` outranks both, exactly as for the other agents. Pinning one collection in config is how several worktrees share one memory. `memory_status` shows the resolved name, with the derived default beside it when a pin wins. A store command's collection is the exception, since it is always authoritative ([store command](/store-command/)).
+
 ## Variables
 
 | Variable                          | Default                                | Effect                                                                                                                                                                                              |

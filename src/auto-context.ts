@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { formatHitBlock, MEMSEARCH_SPEC, parseSearchHitList, type SearchHit } from './contract.ts'
+import type { CollectionRef } from './scope.ts'
 import type { SidecarProcess, SpawnSidecarFn } from './sidecar.ts'
 
 export const AUTO_CONTEXT_ENV = 'PI_MEMSEARCH_AUTO_CONTEXT'
@@ -45,7 +46,7 @@ export interface AutoContextMessage {
 }
 
 export interface AutoContextTarget {
-  collection: string
+  collection: CollectionRef
   repositoryDir: string
   stateDir: string | undefined
 }
@@ -88,7 +89,7 @@ export function createAutoContext(deps: AutoContextDeps): AutoContext {
   let state: SidecarState = 'warming'
   let repositoryDir: string | undefined
   let stateDir: string | undefined
-  let collection = ''
+  let collection: CollectionRef = { kind: 'explicit', name: '' }
   let session: Session | undefined
   let respawns = 0
   let consecutiveTimeouts = 0
@@ -165,7 +166,10 @@ export function createAutoContext(deps: AutoContextDeps): AutoContext {
     if (current.dead) return Promise.resolve({ detail: 'sidecar exited', kind: 'error' })
     return new Promise((resolve) => {
       current.pending.set(id, resolve)
-      current.proc.send(JSON.stringify({ collection, id, query, top_k: AUTO_CONTEXT_TOP_K }))
+      const target = collection.kind === 'explicit'
+        ? { collection: collection.name }
+        : { default_collection: collection.name }
+      current.proc.send(JSON.stringify({ ...target, id, query, top_k: AUTO_CONTEXT_TOP_K }))
     })
   }
 

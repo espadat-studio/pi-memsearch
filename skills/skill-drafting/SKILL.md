@@ -9,7 +9,7 @@ You manage memsearch's **procedural memory**: remembered work expressed as reusa
 
 Stages: **0** daily memory files → **1** skill candidate (`.memsearch/skill-candidates/`, a git-tracked store that keeps evolving) → **2** installed (a pi skills directory). Candidates are never installed automatically; installing is always a deliberate human step. A request may stop at drafting or review, or continue to installation in the same exchange after explicit approval — match the requested stage.
 
-Invoke memsearch exactly as the extension does, through the pinned spec: `uvx --from 'memsearch[onnx]>=0.4.17,<0.5' memsearch …`.
+Invoke memsearch exactly as the extension does, through the pinned spec: `uvx --from 'memsearch[onnx]>=0.4.20,<0.5' memsearch …`.
 
 ## Intent routing
 
@@ -25,7 +25,7 @@ You already have the context, so draft the skill body yourself: markdown without
 **Be exact — do not guess.** You have the live session, so use the real commands, paths, and output, not approximations. If a detail is uncertain, verify it (re-read the relevant files or transcript) or keep that step general — a wrong command is worse than a vague one. Then persist it as a candidate:
 
 ```bash
-uvx --from 'memsearch[onnx]>=0.4.17,<0.5' memsearch skills add \
+uvx --from 'memsearch[onnx]>=0.4.20,<0.5' memsearch skills add \
   --name "<short-slug>" \
   --description "<what it does AND when it triggers — lead with the verbs a user types>" \
   --body-file - <<'EOF'
@@ -41,8 +41,8 @@ EOF
 ## B. Review & install (1→2)
 
 ```bash
-uvx --from 'memsearch[onnx]>=0.4.17,<0.5' memsearch skills status   # candidate versions pending install
-uvx --from 'memsearch[onnx]>=0.4.17,<0.5' memsearch skills list     # add -j for sources and installed paths
+uvx --from 'memsearch[onnx]>=0.4.20,<0.5' memsearch skills status   # candidate versions pending install
+uvx --from 'memsearch[onnx]>=0.4.20,<0.5' memsearch skills list     # add -j for sources and installed paths
 git -C .memsearch/skill-candidates log --oneline -5 2>/dev/null || true
 ```
 
@@ -56,7 +56,7 @@ Installation is an interactive checkpoint: show the candidate, apply requested t
 - `~/.pi/agent/skills` — global, for cross-project workflows
 
 ```bash
-uvx --from 'memsearch[onnx]>=0.4.17,<0.5' memsearch skills install <name> --path <user-approved-path>
+uvx --from 'memsearch[onnx]>=0.4.20,<0.5' memsearch skills install <name> --path <user-approved-path>
 ```
 
 One candidate can be installed to several directories (`--path` is repeatable in a single call). After installing, remind the user that a fresh pi session is needed to load the skill.
@@ -70,7 +70,7 @@ Read the recent daily memory files under `.memsearch/memory/*.md` and look for m
 **Drill into the original before drafting.** Memory-entry bullets are a lossy summary; the exact commands, flags, and paths live in the origin transcript named by each entry's session anchor. Anchors written by other mesh agents (Claude Code, Codex, OpenClaw) resolve with:
 
 ```bash
-uvx --from 'memsearch[onnx]>=0.4.17,<0.5' memsearch transcript <file> --turn <id>
+uvx --from 'memsearch[onnx]>=0.4.20,<0.5' memsearch transcript <file> --turn <id>
 ```
 
 pi transcripts are not a format that command recognizes (it exits 3) — read the JSONL directly and walk the parent chain, as the recall skill documents: find the line whose `id` matches the anchor's entry id, walk `parentId` links back for the conversation that led there, and scan later lines whose chains pass through it for what followed. If you cannot confirm a detail, keep the step general or omit it — never fabricate.

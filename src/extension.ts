@@ -16,6 +16,7 @@ import { type ExpandedSection, formatHitBlock, MEMSEARCH_SPEC, type SearchHit, t
 import {
   type CrossRepoResult,
   discoverProjects,
+  type ResolvedCollection,
   resolveDiscoveredCollection,
   resolveScanRoots,
   searchAcrossProjects,
@@ -35,6 +36,7 @@ import {
 } from './redaction.ts'
 import {
   canonicalize,
+  type CollectionRef,
   type ProjectScope,
   resolveCollection,
   resolveProjectScope,
@@ -71,8 +73,8 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
     let stateDir: string | undefined
     const execAtRepository: ExecFn = (command, args, options) =>
       exec(command, args, {
-        ...options,
         ...(repositoryDir === undefined ? {} : { cwd: repositoryDir }),
+        ...options,
         ...(stateDir === undefined ? {} : { env: { MEMSEARCH_DIR: stateDir } }),
       })
     const backend = createBackend({ env, exec: execAtRepository, now, sleep })
@@ -168,7 +170,12 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
       description:
         'Search the shared project memory for past decisions, fixes and context. Returns top-k scored chunks; pass a chunk_hash to memory_expand for the full section.',
       execute: async (_toolCallId, params, signal, onUpdate, ctx) => {
-        const { collection, collectionFor, options, scope } = resolveTarget(ctx, env, toolOptions(signal, onUpdate))
+        const { collection, collectionFor, options, scope } = resolveTarget(
+          ctx,
+          env,
+          backend,
+          toolOptions(signal, onUpdate),
+        )
         const scanRoots = params.scope === 'all' ? resolveScanRoots(env) : undefined
         return orInstallInstructions(async () => {
           await bootstrap.ensure(scope.dir)
@@ -225,9 +232,9 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
       description:
         'Expand a memory chunk (by chunk_hash from memory_search) into its full section, with the session anchor pointing at the original transcript.',
       execute: async (_toolCallId, params, signal, onUpdate, ctx) => {
-        const { collection, collectionFor, options } = resolveTarget(ctx, env, toolOptions(signal, onUpdate))
-        const target = params.project ? collectionFor(resolve(ctx.cwd, params.project)) : collection
+        const { collection, options, refFor } = resolveTarget(ctx, env, backend, toolOptions(signal, onUpdate))
         return orInstallInstructions(async () => {
+          const target = params.project ? await refFor(resolve(ctx.cwd, params.project)) : collection
           const section = await backend.expand(params.chunk_hash, target, options)
           return { content: [{ text: formatSection(section), type: 'text' as const }], details: { section } }
         })
@@ -327,7 +334,7 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
           }
           return redactEntry(file, content, matches[0] as EntrySection, ctx.cwd)
         }
-        const { collection, options, scope } = resolveTarget(ctx, env, toolOptions(signal, onUpdate))
+        const { collection, options, scope } = resolveTarget(ctx, env, backend, toolOptions(signal, onUpdate))
         return orInstallInstructions(async () => {
           const section = await backend.expand(address.chunkHash, collection, options)
           const file = resolve(scope.dir, section.source)
@@ -371,9 +378,16 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
       description:
         'Diagnose the shared project memory backend: uv/memsearch availability and version, project scope, collection, indexed chunk count, and skill candidates pending install.',
       execute: async (_toolCallId, _params, signal, onUpdate, ctx) => {
-        const { collection, options, scope } = resolveTarget(ctx, env, toolOptions(signal, onUpdate))
+        const { collection, options, resolvedName, scope } = resolveTarget(
+          ctx,
+          env,
+          backend,
+          toolOptions(signal, onUpdate),
+        )
         const availability = await backend.probe(options)
         const bootstrapState = await bootstrap.ensure(scope.dir)
+        const resolution = availability.available ? await resolveForReport(resolvedName) : 'backend unavailable'
+        const reported = typeof resolution === 'string' ? undefined : resolution.name
 
         const lines: string[] = []
         if (availability.available)
@@ -383,7 +397,7 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
         lines.push(
           `scope: ${scope.dir}`,
           `store: ${scope.memoryDir}`,
-          `collection: ${collection}`,
+          describeCollection(collection, resolution),
           describeBootstrap(bootstrapState),
         )
         lines.push(...describeIndexHealth(scope.memoryDir, { baseDir: ctx.cwd, env }))
@@ -398,7 +412,12 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
         const text = lines.join('\n')
         return {
           content: [{ text, type: 'text' as const }],
-          details: { availability, bootstrap: bootstrapState, collection, scope: scope.dir },
+          details: {
+            availability,
+            bootstrap: bootstrapState,
+            collection: reported ?? collection.name,
+            scope: scope.dir,
+          },
         }
       },
       label: 'Memory status',
@@ -411,13 +430,19 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
       description:
         "Run memsearch memory compaction: an LLM condenses the shared project memory store and appends the summary to today's daily memory file, which is then re-indexed. This is not pi context compaction — the live conversation is untouched. It spends the user's configured LLM budget, so call it only when the user explicitly asks to compact memory.",
       execute: async (_toolCallId, _params, signal, onUpdate, ctx) => {
-        const { collection, options, scope } = resolveTarget(ctx, env, toolOptions(signal, onUpdate))
+        const { collection, options, resolvedName, scope } = resolveTarget(
+          ctx,
+          env,
+          backend,
+          toolOptions(signal, onUpdate),
+        )
         const outputDir = compactOutputDir(scope.memoryDir)
         return orInstallInstructions(async () => {
           await bootstrap.ensure(scope.dir)
+          const resolved = await resolvedName()
           const summary = await backend.compact(outputDir, collection, options)
           const text = summary ?? 'Nothing to compact: the collection has no indexed chunks.'
-          return { content: [{ text, type: 'text' as const }], details: { collection } }
+          return { content: [{ text, type: 'text' as const }], details: { collection: resolved } }
         })
       },
       label: 'Memory compact',
@@ -482,9 +507,11 @@ function createBackgroundQueue(): BackgroundQueue {
 }
 
 interface RecallTarget {
-  collection: string
-  collectionFor: (dir: string) => string
+  collection: CollectionRef
+  collectionFor: (dir: string) => Promise<ResolvedCollection>
   options: CommandOptions
+  refFor: (dir: string) => Promise<CollectionRef>
+  resolvedName: () => Promise<string>
   scope: ProjectScope
 }
 
@@ -518,14 +545,27 @@ function parseForgetAddress(params: ForgetParams): ForgetAddress {
   return { date: params.date, mode: 'day', time: params.time }
 }
 
-function resolveTarget(ctx: ExtensionContext, env: NodeJS.ProcessEnv, options: CommandOptions): RecallTarget {
+function resolveTarget(
+  ctx: ExtensionContext,
+  env: NodeJS.ProcessEnv,
+  backend: Backend,
+  options: CommandOptions,
+): RecallTarget {
   const scope = resolveProjectScope({ baseDir: ctx.cwd, env })
   const collection = resolveCollection({ baseDir: ctx.cwd, env })
   const own = canonicalize(scope.dir)
+  const resolvedName = () => backend.resolveCollection(collection, resolveRepositoryDir(ctx.cwd), options)
+  const isOwn = (dir: string) => canonicalize(dir) === own
   return {
     collection,
-    collectionFor: (dir) => canonicalize(dir) === own ? collection : resolveDiscoveredCollection(dir, env),
+    collectionFor: async (dir) =>
+      isOwn(dir)
+        ? { name: await resolvedName(), ref: collection }
+        : resolveDiscoveredCollection(dir, env, backend, options),
     options,
+    refFor: async (dir) =>
+      isOwn(dir) ? collection : (await resolveDiscoveredCollection(dir, env, backend, options)).ref,
+    resolvedName,
     scope,
   }
 }
@@ -668,9 +708,25 @@ async function describeSkillCandidates(backend: Backend, options: CommandOptions
   ]
 }
 
+async function resolveForReport(resolvedName: () => Promise<string>): Promise<{ name: string } | string> {
+  try {
+    return { name: await resolvedName() }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error
+    return error instanceof Error ? error.message : String(error)
+  }
+}
+
+function describeCollection(collection: CollectionRef, resolution: { name: string } | string): string {
+  if (collection.kind === 'explicit') return `collection: ${collection.name}`
+  if (typeof resolution === 'string') return `collection: unresolved (${resolution}; default ${collection.name})`
+  if (resolution.name === collection.name) return `collection: ${resolution.name}`
+  return `collection: ${resolution.name} (set by memsearch config; default ${collection.name})`
+}
+
 async function describeChunkCount(
   backend: Backend,
-  collection: string,
+  collection: CollectionRef,
   options: { signal?: AbortSignal },
 ): Promise<string> {
   try {

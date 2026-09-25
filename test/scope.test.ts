@@ -1,4 +1,4 @@
-import { equal, match, ok } from 'node:assert/strict'
+import { deepEqual, equal, match, ok } from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -123,8 +123,14 @@ test('the store command owns the memory dir and the collection, whatever the dir
     const scope = resolveProjectScope({ baseDir: dir, env })
     equal(scope.memoryDir, '/central/my-app/memory')
     equal(scope.dir, '/central/my-app')
-    equal(resolveCollection({ baseDir: dir, env }), 'ms_my_app_62c1f414')
+    deepEqual(resolveCollection({ baseDir: dir, env }), { kind: 'explicit', name: 'ms_my_app_62c1f414' })
   }
+})
+
+test('without a store command the derived collection is only a default that config can outrank', () => {
+  const dir = gitDir()
+
+  deepEqual(resolveCollection({ baseDir: dir, env: {} }), { kind: 'default', name: deriveCollection(dir) })
 })
 
 test('the store command wins over MEMSEARCH_DIR', () => {

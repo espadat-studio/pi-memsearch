@@ -1,3 +1,4 @@
+import { equal } from 'node:assert/strict'
 import { MEMSEARCH_SPEC } from '../src/contract.ts'
 import type { ExecResult } from '../src/exec.ts'
 
@@ -94,7 +95,7 @@ export const EXPAND_RESULT = {
 
 export const EXPAND_JSON = JSON.stringify(EXPAND_RESULT)
 
-export const VERSION_STDOUT = 'memsearch, version 0.4.17\n'
+export const VERSION_STDOUT = 'memsearch, version 0.4.20\n'
 
 export const SKILLS_STATUS_PENDING_STDOUT = JSON.stringify(
   {
@@ -185,4 +186,9 @@ export function timeoutResult(): ExecResult {
 
 export function enoentError(): Error {
   return Object.assign(new Error('spawn uvx ENOENT'), { code: 'ENOENT' })
+}
+
+export function unpinnedCollection(call: { args: string[] }): Promise<ExecResult> {
+  equal(call.args.slice(3, 6).join(' '), 'config get milvus.collection')
+  return Promise.resolve(okResult(`${call.args.at(-1)}\n`))
 }

@@ -113,12 +113,17 @@ export interface RecordedCall {
 
 export type FakeExecStep = ExecResult | Error | ((call: RecordedCall) => Promise<ExecResult>)
 
-export function createFakeExec(steps: FakeExecStep[]): { calls: RecordedCall[]; exec: ExecFn } {
+export function createFakeExec(
+  steps: FakeExecStep[],
+  pins?: Record<string, string>,
+): { calls: RecordedCall[]; exec: ExecFn } {
   const calls: RecordedCall[] = []
   const remaining = [...steps]
   const exec: ExecFn = async (command, args, options) => {
     const call = { args, command, options }
     calls.push(call)
+    if (pins && args.slice(3, 6).join(' ') === 'config get milvus.collection')
+      return { exitCode: 0, signal: null, stderr: '', stdout: `${pins[options.cwd ?? ''] ?? args.at(-1)}\n` }
     const step = remaining.shift()
     if (!step) throw new Error(`unexpected exec call: ${command} ${args.join(' ')}`)
     if (step instanceof Error) throw step
@@ -269,6 +274,7 @@ export interface SetupOptions {
   model?: Model<Api>
   models?: Model<Api>[]
   onnxModel?: boolean
+  pins?: Record<string, string>
   prefix?: string
   schedule?: (task: () => Promise<void>) => void
   sidecarPlans?: FakeSidecarPlan[]
@@ -321,7 +327,7 @@ export function setupExtension(steps: FakeExecStep[], options: SetupOptions = {}
   const root = createProjectRoot(options.prefix ?? 'pi-memsearch-')
   const home = seedHome(root, { globalConfig: options.globalConfig ?? true, onnxModel: options.onnxModel ?? true })
   const { fire, pi, tools } = createFakePi()
-  const { calls, exec } = createFakeExec(steps)
+  const { calls, exec } = createFakeExec(steps, options.pins)
   const { sidecars, spawnSidecar, spawns } = createFakeSidecarSpawner(options.sidecarPlans ?? [])
   const notices: string[] = []
   const sleeps: number[] = []

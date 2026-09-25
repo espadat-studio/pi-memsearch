@@ -14,6 +14,7 @@ import {
   LOCK_STDERR_MILVUS_LITE_3X,
   okResult,
   SEARCH_JSON,
+  unpinnedCollection,
   USAGE_ERROR_STDERR,
   VERSION_STDOUT,
 } from './fixtures.ts'
@@ -226,7 +227,7 @@ test('aborting the tool signal aborts the backend exec signal', async () => {
 test('shutdown aborts an in-flight memory compaction so the final index runs inside the cap', async () => {
   const compact = hangUntilAborted()
   const { calls, ctx, fire, tools } = setup(
-    [okResult(VERSION_STDOUT), compact.step, okResult(INDEXED_STDOUT)],
+    [okResult(VERSION_STDOUT), unpinnedCollection, compact.step, okResult(INDEXED_STDOUT)],
     neverCapSleep,
   )
   const compactTool = tools.get('memory_compact')
@@ -252,7 +253,10 @@ test('shutdown aborts an in-flight memory compaction so the final index runs ins
 
 test('a queued command settles promptly on shutdown abort instead of spawning', async () => {
   const compact = hangUntilAborted()
-  const { calls, ctx, fire, tool, tools } = setup([okResult(VERSION_STDOUT), compact.step], neverCapSleep)
+  const { calls, ctx, fire, tool, tools } = setup(
+    [okResult(VERSION_STDOUT), unpinnedCollection, compact.step],
+    neverCapSleep,
+  )
   const compactTool = tools.get('memory_compact')
   ok(compactTool)
 
@@ -267,7 +271,7 @@ test('a queued command settles promptly on shutdown abort instead of spawning', 
   await rejects(() => searching, isAbortError)
   await shutdown
 
-  equal(calls.length, 2, 'the queued search never spawned a process')
+  equal(calls.length, 3, 'the queued search never spawned a process')
 })
 
 test('a new session runs tool commands with a fresh, unaborted signal', async () => {
@@ -283,7 +287,12 @@ test('a new session runs tool commands with a fresh, unaborted signal', async ()
 
 test('a search queued behind memory compaction gets one note naming the holder', async () => {
   const compact = gate(okResult(COMPACT_STDOUT))
-  const { calls, ctx, tool, tools } = setup([okResult(VERSION_STDOUT), compact.step, okResult(SEARCH_JSON)])
+  const { calls, ctx, tool, tools } = setup([
+    okResult(VERSION_STDOUT),
+    unpinnedCollection,
+    compact.step,
+    okResult(SEARCH_JSON),
+  ])
   const compactTool = tools.get('memory_compact')
   ok(compactTool, 'memory_compact tool is registered')
 
@@ -294,7 +303,7 @@ test('a search queued behind memory compaction gets one note naming the holder',
   await tick()
 
   deepEqual(notes, ['waiting on memory compaction'], 'the note lands at enqueue, before the holder finishes')
-  equal(calls.length, 2, 'the queued search has not spawned yet when the note fires')
+  equal(calls.length, 3, 'the queued search has not spawned yet when the note fires')
 
   compact.release()
   await compacting

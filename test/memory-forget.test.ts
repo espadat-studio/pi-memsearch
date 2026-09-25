@@ -104,7 +104,7 @@ test('a chunk_hash removes the entry containing the chunk', async () => {
     'memsearch',
     'expand',
     '-j',
-    '-c',
+    '--default-collection',
     deriveCollection(root),
     '--',
     'feedface00000000',

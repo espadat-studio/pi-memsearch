@@ -26,7 +26,7 @@ pi install https://github.com/espadat-studio/pi-memsearch # unreleased master
 ## The first run
 
 :::note[The first run pauses once, on purpose]
-`uvx` resolves `memsearch[onnx]>=0.4.17,<0.5`, and then the first embedding downloads the onnx model, about 560 MB. That is roughly a 10 s pause on a fast connection, and pi announces it as a notice so it is not mistaken for a hang. It happens once per machine, not once per project.
+`uvx` resolves `memsearch[onnx]>=0.4.20,<0.5`, and then the first embedding downloads the onnx model, about 560 MB. That is roughly a 10 s pause on a fast connection, and pi announces it as a notice so it is not mistaken for a hang. It happens once per machine, not once per project.
 :::
 
 No API key is involved. When no embedding provider is configured anywhere, pi-memsearch writes `embedding.provider = onnx` into memsearch's global config, once. An existing config is never touched: whatever the rest of the mesh already agreed on stays.

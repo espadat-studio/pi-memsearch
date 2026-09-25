@@ -12,6 +12,7 @@ import {
   EXPAND_RESULT,
   MISSING_COLLECTION_STDERRS,
   okResult,
+  unpinnedCollection,
   VERSION_STDOUT,
 } from './fixtures.ts'
 import { createFakeContext, type FakeExecStep, setupExtension, storeCommand, TEST_SESSION } from './harness.ts'
@@ -45,7 +46,7 @@ test('returns the full section for a chunk hash', async () => {
     'memsearch',
     'expand',
     '-j',
-    '-c',
+    '--default-collection',
     deriveCollection(root),
     '--',
     EXPAND_RESULT.chunk_hash,
@@ -60,11 +61,16 @@ test('returns the full section for a chunk hash', async () => {
 
 test('an origin project routes expansion to that project collection', async () => {
   const origin = mkdtempSync(join(tmpdir(), 'expand-origin-'))
-  const { calls, ctx, tool } = setup([okResult(VERSION_STDOUT), okResult(JSON.stringify(EXPAND_RESULT))])
+  const { calls, ctx, tool } = setup([
+    okResult(VERSION_STDOUT),
+    unpinnedCollection,
+    okResult(JSON.stringify(EXPAND_RESULT)),
+  ])
 
   await expand(tool, ctx, EXPAND_RESULT.chunk_hash, origin)
 
-  deepEqual(calls[1]?.args.slice(2), [
+  equal(calls[1]?.options.cwd, origin, "the origin's own config names its collection")
+  deepEqual(calls[2]?.args.slice(2), [
     'memsearch',
     'expand',
     '-j',
@@ -143,13 +149,13 @@ test("an origin project's collection ignores the searching session's MEMSEARCH_D
   const origin = mkdtempSync(join(tmpdir(), 'expand-origin-'))
   const central = mkdtempSync(join(tmpdir(), 'expand-central-'))
   const { calls, ctx, tool } = setup(
-    [okResult(VERSION_STDOUT), okResult(JSON.stringify(EXPAND_RESULT))],
+    [okResult(VERSION_STDOUT), unpinnedCollection, okResult(JSON.stringify(EXPAND_RESULT))],
     { MEMSEARCH_DIR: central },
   )
 
   await expand(tool, ctx, EXPAND_RESULT.chunk_hash, origin)
 
-  equal(calls[1]?.args.at(-3), deriveCollection(origin))
+  equal(calls[2]?.args.at(-3), deriveCollection(origin))
 })
 
 test("the session's own project expands through the session scope, not a recorded name", async () => {
