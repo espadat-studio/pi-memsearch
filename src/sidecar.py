@@ -29,6 +29,8 @@ def _emit(payload: dict[str, Any]) -> None:
 
 
 def _is_missing_collection(error: BaseException) -> bool:
+    if type(error).__name__ == "CollectionNotFoundError":
+        return True
     return getattr(error, "code", None) == MILVUS_COLLECTION_NOT_FOUND
 
 

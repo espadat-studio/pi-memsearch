@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import type { SearchHit } from '../src/contract.ts'
 import type { ExecResult } from '../src/exec.ts'
 import { deriveCollection } from '../src/scope.ts'
-import { COMPACT_STDOUT, errResult, MISSING_COLLECTION_STDERR, okResult, VERSION_STDOUT } from './fixtures.ts'
+import { COMPACT_STDOUT, errResult, MISSING_COLLECTION_STDERRS, okResult, VERSION_STDOUT } from './fixtures.ts'
 import { createFakeContext, type FakeExecStep, setupExtension, storeCommand, TEST_SESSION } from './harness.ts'
 
 function setup(steps: FakeExecStep[], options: { env?: NodeJS.ProcessEnv } = {}) {
@@ -229,26 +229,28 @@ test('top_k caps the merged cross-repo result, not just each project', async () 
   ok(!text.includes('chunk dddd000000000004'), 'hits beyond top_k are dropped after the merge')
 })
 
-test('a project whose collection was never indexed is skipped and counted, not fatal', async () => {
-  const scanRoot = seedScanRoot(['alpha', 'beta'])
-  const alpha = join(scanRoot, 'alpha')
-  const beta = join(scanRoot, 'beta')
-  const { ctx, tool } = setup(
-    [
-      okResult(VERSION_STDOUT),
-      okResult('[]'),
-      errResult(1, MISSING_COLLECTION_STDERR),
-      okResult(JSON.stringify([projectHit(beta, 0.7, 'dddd000000000004')])),
-    ],
-    { env: { PI_MEMSEARCH_SCAN_ROOTS: scanRoot } },
-  )
+for (const [version, stderr] of Object.entries(MISSING_COLLECTION_STDERRS)) {
+  test(`a project whose collection was never indexed is skipped and counted, not fatal on memsearch ${version}`, async () => {
+    const scanRoot = seedScanRoot(['alpha', 'beta'])
+    const alpha = join(scanRoot, 'alpha')
+    const beta = join(scanRoot, 'beta')
+    const { ctx, tool } = setup(
+      [
+        okResult(VERSION_STDOUT),
+        okResult('[]'),
+        errResult(1, stderr),
+        okResult(JSON.stringify([projectHit(beta, 0.7, 'dddd000000000004')])),
+      ],
+      { env: { PI_MEMSEARCH_SCAN_ROOTS: scanRoot } },
+    )
 
-  const text = await search(tool, ctx, { query: 'redis', scope: 'all' })
+    const text = await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  ok(text.includes('2 projects searched, 1 skipped'))
-  ok(text.includes(`skipped (never indexed on this machine): ${alpha}`))
-  ok(text.includes('chunk dddd000000000004'), 'projects after the skipped one are still searched')
-})
+    ok(text.includes('2 projects searched, 1 skipped'))
+    ok(text.includes(`skipped (never indexed on this machine): ${alpha}`))
+    ok(text.includes('chunk dddd000000000004'), 'projects after the skipped one are still searched')
+  })
+}
 
 test('a cross-repo search queued behind memory compaction still gets one queued note', async () => {
   const scanRoot = seedScanRoot(['alpha'])

@@ -173,6 +173,8 @@ A missing `uv` or memsearch never breaks a session:
 | `memory_transcript`                                | Unaffected, a pure file read                                              |
 | Auto-context                                       | No injection; the prompt proceeds                                         |
 
+A never-indexed collection is not an error either. `memory_search` reports no memories, `memory_status` reports `collection not created yet`, cross-repo search skips the project and counts it, and auto-context returns no hits. Through memsearch 0.4.20 the absent collection surfaces as Milvus code 100, or `search` quietly returns nothing. From 0.4.21 memsearch raises `CollectionNotFoundError`. pi recognizes both (`isMissingCollection` in `src/contract.ts`, `_is_missing_collection` in `src/sidecar.py`). `memory_expand` still fails, naming the collection as never indexed.
+
 The store command is the deliberate exception: when it is set and fails, resolution raises instead of degrading, because a silent fallback would write memory to the wrong store.
 
 `memory_status` replaces the index-state path with `index: no state file will be written` when a store command declines `state-dir`, `$MEMSEARCH_DIR` is unset, and the store sits outside any `.memsearch` tree: the one combination memsearch writes no state file for. The message names each condition and points at the `state-dir` mode that fixes it. This is a configuration fact, not a transient one: `index: no state recorded yet` resolves itself on the next index, this never does. Every condition must hold; any one absent leaves the output as it was.

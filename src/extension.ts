@@ -3,7 +3,13 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path'
 import { Type } from 'typebox'
 import { AUTO_CONTEXT_ENV, type AutoContextStatus, createAutoContext } from './auto-context.ts'
-import { type Backend, BackendUnavailableError, type CommandOptions, createBackend } from './backend.ts'
+import {
+  type Backend,
+  BackendUnavailableError,
+  type CommandOptions,
+  createBackend,
+  MissingCollectionError,
+} from './backend.ts'
 import { type BootstrapState, createBootstrap, ONNX_DOWNLOAD_NOTICE } from './bootstrap.ts'
 import { type Complete, DEFAULT_DISTILLATION_TIMEOUT_MS, registerCapture } from './capture.ts'
 import { type ExpandedSection, formatHitBlock, MEMSEARCH_SPEC, type SearchHit, type SkillsStatus } from './contract.ts'
@@ -186,11 +192,16 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
             const text = formatCrossRepoResult(params.query, result)
             return { content: [{ text, type: 'text' as const }], details: { ...result } }
           }
-          const hits = await backend.search(
-            params.query,
-            collection,
-            params.top_k === undefined ? options : { ...options, topK: params.top_k },
-          )
+          const hits = await backend
+            .search(
+              params.query,
+              collection,
+              params.top_k === undefined ? options : { ...options, topK: params.top_k },
+            )
+            .catch((error: unknown) => {
+              if (error instanceof MissingCollectionError) return []
+              throw error
+            })
           const text = hits.length === 0 ? `No memories found for "${params.query}".` : formatHits(hits)
           return { content: [{ text, type: 'text' as const }], details: { hits } }
         })

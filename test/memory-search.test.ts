@@ -3,7 +3,15 @@ import { deepEqual, equal, match, ok, rejects, throws } from 'node:assert/strict
 import { test } from 'node:test'
 import { createMemsearchExtension } from '../src/extension.ts'
 import { deriveCollection } from '../src/scope.ts'
-import { enoentError, okResult, SEARCH_HITS, SEARCH_JSON, VERSION_STDOUT } from './fixtures.ts'
+import {
+  enoentError,
+  errResult,
+  MISSING_COLLECTION_STDERRS,
+  okResult,
+  SEARCH_HITS,
+  SEARCH_JSON,
+  VERSION_STDOUT,
+} from './fixtures.ts'
 import { createFakePi, type FakeExecStep, setupExtension } from './harness.ts'
 
 function setup(steps: FakeExecStep[], options: { env?: NodeJS.ProcessEnv } = {}) {
@@ -48,6 +56,14 @@ test('returns scored chunks for the default top-k of 5', async () => {
   ok(text.includes('1.000'))
   ok(text.includes(second.chunk_hash))
   ok(text.includes('0.508'))
+})
+
+test('an absent collection reads as no memories on memsearch 0.4.21', async () => {
+  const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, MISSING_COLLECTION_STDERRS['0.4.21'])])
+
+  const text = await search(tool, ctx, { query: 'redis cache' })
+
+  equal(text, 'No memories found for "redis cache".')
 })
 
 test('passes an explicit top_k through to the backend', async () => {

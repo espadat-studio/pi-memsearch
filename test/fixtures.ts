@@ -150,8 +150,13 @@ export const INCOMPATIBLE_DB_STDERR =
 
 export const CHUNK_NOT_FOUND_STDERR = 'Chunk not found: deadbeef00000000\n'
 
-export const MISSING_COLLECTION_STDERR =
-  'Milvus error (code 100): collection not found[collection=ms_project_a1b2c3d4]\n'
+// Excerpted from live runs against an absent collection: through 0.4.20 the raw Milvus code 100 leaks
+// out (and `search` returns [] without erroring), from 0.4.21 memsearch raises CollectionNotFoundError.
+export const MISSING_COLLECTION_STDERRS = {
+  '0.4.20': "Milvus error (code 100): collection 'ms_project_a1b2c3d4' does not exist\n",
+  '0.4.21':
+    "Error: Collection 'ms_project_a1b2c3d4' does not exist at '/home/user/.memsearch/milvus.db'. Run 'memsearch index <path> ...' to create it, or verify --collection and --milvus-uri.\n",
+}
 
 export const CONFIG_ERROR_STDERR = 'Configuration error: environment variable OPENAI_API_KEY is not set\n'
 
