@@ -10,7 +10,7 @@ import {
   enoentError,
   errResult,
   EXPAND_RESULT,
-  MISSING_COLLECTION_STDERR,
+  MISSING_COLLECTION_STDERRS,
   okResult,
   VERSION_STDOUT,
 } from './fixtures.ts'
@@ -101,11 +101,13 @@ test('an empty origin project is treated as absent, not as a path', async () => 
   ok(calls[1]?.args.includes(deriveCollection(root)), 'expansion stays on the session scope collection')
 })
 
-test('expanding into a never-indexed collection reports it plainly', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, MISSING_COLLECTION_STDERR)])
+for (const [version, stderr] of Object.entries(MISSING_COLLECTION_STDERRS)) {
+  test(`expanding into a never-indexed collection reports it plainly (memsearch ${version})`, async () => {
+    const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, stderr)])
 
-  await rejects(() => expand(tool, ctx, 'abc'), /never indexed/)
-})
+    await rejects(() => expand(tool, ctx, 'abc'), /never indexed/)
+  })
+}
 
 test('a section without an anchor renders without an origin line', async () => {
   const { anchor: _anchor, ...unanchored } = EXPAND_RESULT

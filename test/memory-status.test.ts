@@ -10,7 +10,7 @@ import {
   eaccesError,
   enoentError,
   errResult,
-  MISSING_COLLECTION_STDERR,
+  MISSING_COLLECTION_STDERRS,
   okResult,
   SKILLS_STATUS_NONE_STDOUT,
   SKILLS_STATUS_PENDING_STDOUT,
@@ -357,17 +357,15 @@ test('an aborted skills status call propagates instead of degrading', async () =
   await rejects(() => tool.execute('call-1', {}, undefined, undefined, ctx), { name: 'AbortError' })
 })
 
-test('a missing collection reads as zero indexed chunks', async () => {
-  const { ctx, tool } = setup([
-    okResult(VERSION_STDOUT),
-    errResult(1, MISSING_COLLECTION_STDERR),
-    okResult(SKILLS_STATUS_NONE_STDOUT),
-  ])
+for (const [version, stderr] of Object.entries(MISSING_COLLECTION_STDERRS)) {
+  test(`a missing collection reads as zero indexed chunks (memsearch ${version})`, async () => {
+    const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, stderr), okResult(SKILLS_STATUS_NONE_STDOUT)])
 
-  const text = await status(tool, ctx)
+    const text = await status(tool, ctx)
 
-  ok(text.includes('indexed chunks: 0 (collection not created yet)'))
-})
+    ok(text.includes('indexed chunks: 0 (collection not created yet)'))
+  })
+}
 
 test('a delegated store outside a .memsearch tree says no state file will ever be written', async () => {
   const central = mkdtempSync(join(tmpdir(), 'memory-status-central-'))

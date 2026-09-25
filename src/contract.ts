@@ -17,8 +17,13 @@ export function isLockContention(stderr: string): boolean {
   return LOCK_PATTERNS.some((pattern) => pattern.test(stderr))
 }
 
+const MISSING_COLLECTION_PATTERNS = [
+  /Milvus error \(code 100\)/,
+  /Error: Collection '[^']+' does not exist at /,
+]
+
 export function isMissingCollection(stderr: string): boolean {
-  return /Milvus error \(code 100\)/.test(stderr)
+  return MISSING_COLLECTION_PATTERNS.some((pattern) => pattern.test(stderr))
 }
 
 export function parseVersion(stdout: string): string | undefined {
