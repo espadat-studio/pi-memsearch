@@ -18,6 +18,7 @@ import {
   LOCK_STDERR_0417,
   okResult,
   SEARCH_JSON,
+  unpinnedCollection,
   UVX_PREFIX,
   VERSION_STDOUT,
 } from './fixtures.ts'
@@ -45,19 +46,19 @@ async function compact(tool: ToolDefinition, ctx: ExtensionContext): Promise<str
 }
 
 test('takes no parameters and runs memory compaction over the whole project collection', async () => {
-  const { calls, ctx, root, tool } = setup([okResult(VERSION_STDOUT), okResult(COMPACT_STDOUT)])
+  const { calls, ctx, root, tool } = setup([okResult(VERSION_STDOUT), unpinnedCollection, okResult(COMPACT_STDOUT)])
 
   const result = await tool.execute('call-1', {}, undefined, undefined, ctx)
 
-  deepEqual(calls[1]?.args, [
+  deepEqual(calls[2]?.args, [
     ...UVX_PREFIX,
     'compact',
     '-o',
     join(root, '.memsearch'),
-    '-c',
+    '--default-collection',
     deriveCollection(root),
   ])
-  equal(calls[1]?.options.timeoutMs, 300_000)
+  equal(calls[2]?.options.timeoutMs, 300_000)
   const first = result.content[0]
   ok(first?.type === 'text')
   equal(first.text, COMPACT_SUMMARY)
@@ -79,7 +80,7 @@ test('a store that is not a leaf memory directory refuses to compact and spends 
 })
 
 test('an empty collection reports nothing to compact instead of failing', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), okResult(COMPACT_NOOP_STDOUT)])
+  const { ctx, tool } = setup([okResult(VERSION_STDOUT), unpinnedCollection, okResult(COMPACT_NOOP_STDOUT)])
 
   const text = await compact(tool, ctx)
 
@@ -110,7 +111,7 @@ test('missing uv returns install instructions instead of an error', async () => 
 })
 
 test('a failed memory compaction surfaces the stderr detail', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, CONFIG_ERROR_STDERR)])
+  const { ctx, tool } = setup([okResult(VERSION_STDOUT), unpinnedCollection, errResult(1, CONFIG_ERROR_STDERR)])
 
   await rejects(
     () => compact(tool, ctx),
@@ -121,6 +122,7 @@ test('a failed memory compaction surfaces the stderr detail', async () => {
 test('lock contention retries with backoff, invisibly to the caller', async () => {
   const { calls, ctx, sleeps, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     errResult(1, LOCK_STDERR_0417),
     okResult(COMPACT_STDOUT),
   ])
@@ -128,30 +130,34 @@ test('lock contention retries with backoff, invisibly to the caller', async () =
   const text = await compact(tool, ctx)
 
   equal(text, COMPACT_SUMMARY)
-  equal(calls.length, 3)
+  equal(calls.length, 4)
   deepEqual(sleeps, [200])
 })
 
 test('output drift fails loudly', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), okResult('Compacted OK\n')])
+  const { ctx, tool } = setup([okResult(VERSION_STDOUT), unpinnedCollection, okResult('Compacted OK\n')])
 
   await rejects(() => compact(tool, ctx), /memsearch compact output drifted/)
 })
 
 test('a whitespace-only summary fails loudly instead of returning empty text', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), okResult('Compact complete. Summary:\n\n   \n')])
+  const { ctx, tool } = setup([
+    okResult(VERSION_STDOUT),
+    unpinnedCollection,
+    okResult('Compact complete. Summary:\n\n   \n'),
+  ])
 
   await rejects(() => compact(tool, ctx), /memsearch compact output drifted/)
 })
 
 test('PI_MEMSEARCH_COMPACT_TIMEOUT_MS overrides the memory compaction timeout', async () => {
-  const { calls, ctx, tool } = setup([okResult(VERSION_STDOUT), okResult(COMPACT_STDOUT)], {
+  const { calls, ctx, tool } = setup([okResult(VERSION_STDOUT), unpinnedCollection, okResult(COMPACT_STDOUT)], {
     env: { PI_MEMSEARCH_COMPACT_TIMEOUT_MS: '600000' },
   })
 
   await compact(tool, ctx)
 
-  equal(calls[1]?.options.timeoutMs, 600_000)
+  equal(calls[2]?.options.timeoutMs, 600_000)
 })
 
 test('a malformed PI_MEMSEARCH_COMPACT_TIMEOUT_MS fails fast at load', () => {
@@ -172,7 +178,7 @@ test('aborting the tool signal aborts the backend exec signal', async () => {
     observed.push(call.options.signal?.aborted)
     return okResult(COMPACT_STDOUT)
   }
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), step])
+  const { ctx, tool } = setup([okResult(VERSION_STDOUT), unpinnedCollection, step])
 
   await tool.execute('call-1', {}, controller.signal, undefined, ctx)
 
@@ -188,9 +194,10 @@ test('memory compaction runs through the same serialized queue as search', async
     await new Promise((resolve) => setTimeout(resolve, 10))
     inFlight--
     if (call.args.includes('--version')) return okResult(VERSION_STDOUT)
+    if (call.args.includes('config')) return unpinnedCollection(call)
     return call.args.includes('compact') ? okResult(COMPACT_STDOUT) : okResult(SEARCH_JSON)
   }
-  const { ctx, tool, tools } = setup([respond, respond, respond])
+  const { ctx, tool, tools } = setup([respond, respond, respond, respond])
   const search = tools.get('memory_search')
   ok(search, 'memory_search tool is registered')
 
@@ -206,6 +213,7 @@ test('a mid-session memory compaction does not refresh the stable snapshot', asy
   const { ctx, fire, root, tool } = setup([
     okResult(VERSION_STDOUT),
     okResult(INDEXED_STDOUT),
+    unpinnedCollection,
     okResult(COMPACT_STDOUT),
   ])
   const memoryDir = join(root, '.memsearch', 'memory')

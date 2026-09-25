@@ -15,6 +15,11 @@ export interface ScopeOptions {
   env?: NodeJS.ProcessEnv
 }
 
+export interface CollectionRef {
+  kind: 'default' | 'explicit'
+  name: string
+}
+
 type StoreMode = 'collection' | 'memory-dir' | 'state-dir'
 
 const storeAnswers = new Map<string, string>()
@@ -34,8 +39,10 @@ export function resolveProjectScope({ baseDir, env = process.env }: ScopeOptions
   return { dir, memoryDir: join(dir, '.memsearch', 'memory') }
 }
 
-export function resolveCollection({ baseDir, env = process.env }: ScopeOptions): string {
-  return storeCommandCollection({ baseDir, env }) ?? deriveCollection(resolveProjectScope({ baseDir, env }).dir)
+export function resolveCollection({ baseDir, env = process.env }: ScopeOptions): CollectionRef {
+  const explicit = storeCommandCollection({ baseDir, env })
+  if (explicit !== undefined) return { kind: 'explicit', name: explicit }
+  return { kind: 'default', name: deriveCollection(resolveProjectScope({ baseDir, env }).dir) }
 }
 
 export function storeCommandCollection({ baseDir, env = process.env }: ScopeOptions): string | undefined {

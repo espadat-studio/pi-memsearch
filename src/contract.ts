@@ -1,9 +1,8 @@
-export const MEMSEARCH_SPEC = 'memsearch[onnx]>=0.4.17,<0.5'
+export const MEMSEARCH_SPEC = 'memsearch[onnx]>=0.4.20,<0.5'
 
-// The pinned memsearch releases print non-ASCII output unescaped, and Python picks its pipe
-// encoding from the locale, so an explicitly non-UTF-8 locale fails any accented recall or
-// compaction. Force UTF-8 on child streams; drop once the MEMSEARCH_SPEC floor reaches a
-// release with the upstream fix.
+// Python picks its pipe encoding from the locale, so an explicitly non-UTF-8 locale fails any
+// accented recall or compaction. memsearch reconfigures only its CLI's stdout and stderr; the
+// sidecar is pi's own script and reads queries from stdin, so force UTF-8 on every child stream.
 export function pythonChildEnv(): NodeJS.ProcessEnv {
   return { ...process.env, PYTHONIOENCODING: 'utf-8' }
 }

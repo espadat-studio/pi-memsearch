@@ -5,7 +5,9 @@ memsearch's config layering resolves identically to the CLI. The embedding provi
 is constructed once and held for the process lifetime; every search opens a
 throwaway MilvusStore so the directory-wide Milvus Lite lock is borrowed, never held.
 
-stdin:  {"id": <any>, "query": str, "collection": str, "top_k": int}
+stdin:  {"id": <any>, "query": str, "collection" | "default_collection": str, "top_k": int}
+        "collection" is authoritative; "default_collection" is layered under the global and
+        project config exactly like the CLI's --default-collection.
 stdout: {"event": "ready", "provider": str, "model": str}   once, after warmup
         {"id": <any>, "hits": [...]} | {"id": <any>, "error": str}
 Exits when stdin reaches EOF. `--probe` verifies the memsearch internals this
@@ -34,6 +36,15 @@ def _is_missing_collection(error: BaseException) -> bool:
     return getattr(error, "code", None) == MILVUS_COLLECTION_NOT_FOUND
 
 
+def _collection(request: dict[str, Any]) -> str:
+    default = request.get("default_collection")
+    if default is None:
+        return request["collection"]
+    from memsearch.config import resolve_config
+
+    return resolve_config(default_overrides={"milvus": {"collection": default}}).milvus.collection
+
+
 def _open_store(config: Any, collection: str) -> Any:
     from memsearch.store import MilvusStore
 
@@ -49,7 +60,7 @@ async def _search(request: dict[str, Any], config: Any, provider: Any) -> list[d
     query = request["query"]
     embedded, store = await asyncio.gather(
         provider.embed([query]),
-        asyncio.to_thread(_open_store, config, request["collection"]),
+        asyncio.to_thread(lambda: _open_store(config, _collection(request))),
         return_exceptions=True,
     )
     if isinstance(store, BaseException):
@@ -135,6 +146,7 @@ def _probe() -> None:
     if not callable(MilvusStore.close):
         raise RuntimeError("memsearch internals drifted: MilvusStore.close is not callable")
 
+    _require_params(inspect.signature(resolve_config), {"default_overrides"}, "memsearch.config.resolve_config")
     config = resolve_config()
     _ = (
         config.embedding.provider,

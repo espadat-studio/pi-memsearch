@@ -15,6 +15,7 @@ import {
   SKILLS_STATUS_NONE_STDOUT,
   SKILLS_STATUS_PENDING_STDOUT,
   STATS_STDOUT,
+  unpinnedCollection,
   UVX_PREFIX,
   VERSION_STDOUT,
 } from './fixtures.ts'
@@ -37,6 +38,7 @@ async function status(tool: ToolDefinition, ctx: ExtensionContext): Promise<stri
 test('reports version, scope, collection and chunk count', async () => {
   const { calls, ctx, root, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ])
@@ -46,13 +48,59 @@ test('reports version, scope, collection and chunk count', async () => {
   const collection = deriveCollection(root)
   equal(calls[0]?.command, 'uvx')
   deepEqual(calls[0]?.args, [...UVX_PREFIX, '--version'])
-  deepEqual(calls[1]?.args, [...UVX_PREFIX, 'stats', '-c', collection])
+  deepEqual(calls[1]?.args, [...UVX_PREFIX, 'config', 'get', 'milvus.collection', '--default-collection', collection])
+  deepEqual(calls[2]?.args, [...UVX_PREFIX, 'stats', '--default-collection', collection])
   equal(calls[0]?.options.timeoutMs, 60_000)
-  equal(calls[1]?.options.timeoutMs, 10_000)
-  ok(text.includes('memsearch: 0.4.17'))
+  equal(calls[2]?.options.timeoutMs, 10_000)
+  ok(text.includes('memsearch: 0.4.20'))
   ok(text.includes(`scope: ${root}`))
   ok(text.includes(`store: ${join(root, '.memsearch', 'memory')}`))
   ok(text.includes(`collection: ${collection}`))
+  ok(text.includes('indexed chunks: 42'))
+})
+
+test('a memsearch config pin is the collection reported, with the derived default beside it', async () => {
+  const pins: Record<string, string> = {}
+  const { calls, ctx, root, tools } = setupExtension(
+    [okResult(VERSION_STDOUT), okResult(STATS_STDOUT), okResult(SKILLS_STATUS_NONE_STDOUT)],
+    { pins, prefix: 'memory-status-' },
+  )
+  pins[root] = 'ms_pinned_by_config'
+  const statusTool = tools.get('memory_status')
+  ok(statusTool)
+
+  const result = await statusTool.execute('call-1', {}, undefined, undefined, ctx)
+
+  const first = result.content[0]
+  ok(first?.type === 'text')
+  ok(
+    first.text.includes(`collection: ms_pinned_by_config (set by memsearch config; default ${deriveCollection(root)})`),
+  )
+  deepEqual(calls[2]?.args, [...UVX_PREFIX, 'stats', '--default-collection', deriveCollection(root)])
+  equal((result.details as { collection: string }).collection, 'ms_pinned_by_config')
+})
+
+test('a failed collection lookup degrades to a status line instead of failing the status', async () => {
+  const { ctx, root, tool } = setup([
+    okResult(VERSION_STDOUT),
+    errResult(1, 'Error: bad toml\n'),
+    okResult(STATS_STDOUT),
+    okResult(SKILLS_STATUS_NONE_STDOUT),
+  ])
+
+  const result = await tool.execute('call-1', {}, undefined, undefined, ctx)
+  const first = result.content[0]
+  ok(first?.type === 'text')
+  const text = first.text
+
+  equal((result.details as { collection?: string }).collection, undefined, 'the derived name is never reported as read')
+  ok(
+    text.includes(
+      `collection: unresolved (memsearch config get failed: exit 1: Error: bad toml; default ${
+        deriveCollection(root)
+      })`,
+    ),
+  )
   ok(text.includes('indexed chunks: 42'))
 })
 
@@ -75,6 +123,7 @@ test('a delegated store surfaces its dir and collection, so the active seam is v
 test('probes the version once and reuses it on later calls', async () => {
   const { calls, ctx, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
     okResult(STATS_STDOUT),
@@ -84,8 +133,9 @@ test('probes the version once and reuses it on later calls', async () => {
   await status(tool, ctx)
   await status(tool, ctx)
 
-  equal(calls.length, 5)
+  equal(calls.length, 6)
   equal(calls.filter((call) => call.args.includes('--version')).length, 1)
+  equal(calls.filter((call) => call.args.includes('config')).length, 1, 'the resolved name is memoized')
 })
 
 test('missing uv degrades to install instructions instead of an error', async () => {
@@ -112,6 +162,7 @@ test('a failed probe is cached with a short negative ttl, then retried', async (
   const { calls, ctx, tool } = setup([
     enoentError(),
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ], {
@@ -125,8 +176,8 @@ test('a failed probe is cached with a short negative ttl, then retried', async (
 
   time += 31_000
   const text = await status(tool, ctx)
-  ok(text.includes('memsearch: 0.4.17'))
-  equal(calls.length, 4)
+  ok(text.includes('memsearch: 0.4.20'))
+  equal(calls.length, 5)
 })
 
 function writeIndexState(root: string, state: object): void {
@@ -135,7 +186,12 @@ function writeIndexState(root: string, state: object): void {
 }
 
 test('without an index-state file the index health reads as unrecorded', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), okResult(STATS_STDOUT), okResult(SKILLS_STATUS_NONE_STDOUT)])
+  const { ctx, tool } = setup([
+    okResult(VERSION_STDOUT),
+    unpinnedCollection,
+    okResult(STATS_STDOUT),
+    okResult(SKILLS_STATUS_NONE_STDOUT),
+  ])
 
   const text = await status(tool, ctx)
 
@@ -145,6 +201,7 @@ test('without an index-state file the index health reads as unrecorded', async (
 test('the reported index-state path is the one beside the store', async () => {
   const { ctx, root, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ])
@@ -199,7 +256,7 @@ test('state-dir from the store command outranks an inherited MEMSEARCH_DIR', asy
 test('MEMSEARCH_DIR holds the index state with no store command in play', async () => {
   const stateDir = mkdtempSync(join(tmpdir(), 'memory-status-state-'))
   const { ctx, tool } = setup(
-    [okResult(VERSION_STDOUT), okResult(STATS_STDOUT), okResult(SKILLS_STATUS_NONE_STDOUT)],
+    [okResult(VERSION_STDOUT), unpinnedCollection, okResult(STATS_STDOUT), okResult(SKILLS_STATUS_NONE_STDOUT)],
     { env: { MEMSEARCH_DIR: stateDir } },
   )
   writeFileSync(
@@ -215,7 +272,7 @@ test('MEMSEARCH_DIR holds the index state with no store command in play', async 
 
 test('a relative MEMSEARCH_DIR resolves at the repository for both the state and the store', async () => {
   const { ctx, root, tool } = setup(
-    [okResult(VERSION_STDOUT), okResult(STATS_STDOUT), okResult(SKILLS_STATUS_NONE_STDOUT)],
+    [okResult(VERSION_STDOUT), unpinnedCollection, okResult(STATS_STDOUT), okResult(SKILLS_STATUS_NONE_STDOUT)],
     { env: { MEMSEARCH_DIR: '.memsearch' } },
   )
   const nested = join(root, 'packages', 'core')
@@ -230,6 +287,7 @@ test('a relative MEMSEARCH_DIR resolves at the repository for both the state and
 test('an ok index state reports the last completed run', async () => {
   const { ctx, root, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ])
@@ -248,6 +306,7 @@ test('an ok index state reports the last completed run', async () => {
 test('a degraded index state surfaces the failed files', async () => {
   const { ctx, root, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ])
@@ -268,6 +327,7 @@ test('a degraded index state surfaces the failed files', async () => {
 test('an error index state surfaces the last error', async () => {
   const { ctx, root, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ])
@@ -286,6 +346,7 @@ test('an error index state surfaces the last error', async () => {
 test('an unsupported index-state schema version reads as unreadable', async () => {
   const { ctx, root, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ])
@@ -299,6 +360,7 @@ test('an unsupported index-state schema version reads as unreadable', async () =
 test('an unreadable index-state file is reported instead of crashing the status tool', async () => {
   const { ctx, root, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ])
@@ -323,19 +385,25 @@ test('index health is reported even when the backend is unavailable', async () =
 test('pending skill candidates surface with counts and the skill-drafting pointer', async () => {
   const { calls, ctx, tool } = setup([
     okResult(VERSION_STDOUT),
+    unpinnedCollection,
     okResult(STATS_STDOUT),
     okResult(SKILLS_STATUS_PENDING_STDOUT),
   ])
 
   const text = await status(tool, ctx)
 
-  deepEqual(calls[2]?.args, [...UVX_PREFIX, 'skills', 'status', '-j'])
-  equal(calls[2]?.options.timeoutMs, 10_000)
+  deepEqual(calls[3]?.args, [...UVX_PREFIX, 'skills', 'status', '-j'])
+  equal(calls[3]?.options.timeoutMs, 10_000)
   ok(text.includes('skill candidates: 2 pending install (1 new, 1 updated) - review with the skill-drafting skill'))
 })
 
 test('no skill-candidate line appears when nothing is pending', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), okResult(STATS_STDOUT), okResult(SKILLS_STATUS_NONE_STDOUT)])
+  const { ctx, tool } = setup([
+    okResult(VERSION_STDOUT),
+    unpinnedCollection,
+    okResult(STATS_STDOUT),
+    okResult(SKILLS_STATUS_NONE_STDOUT),
+  ])
 
   const text = await status(tool, ctx)
 
@@ -343,7 +411,12 @@ test('no skill-candidate line appears when nothing is pending', async () => {
 })
 
 test('a failing skills status call degrades quietly without a line', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), okResult(STATS_STDOUT), errResult(1, 'boom')])
+  const { ctx, tool } = setup([
+    okResult(VERSION_STDOUT),
+    unpinnedCollection,
+    okResult(STATS_STDOUT),
+    errResult(1, 'boom'),
+  ])
 
   const text = await status(tool, ctx)
 
@@ -352,14 +425,19 @@ test('a failing skills status call degrades quietly without a line', async () =>
 })
 
 test('an aborted skills status call propagates instead of degrading', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), okResult(STATS_STDOUT), abortError()])
+  const { ctx, tool } = setup([okResult(VERSION_STDOUT), unpinnedCollection, okResult(STATS_STDOUT), abortError()])
 
   await rejects(() => tool.execute('call-1', {}, undefined, undefined, ctx), { name: 'AbortError' })
 })
 
 for (const [version, stderr] of Object.entries(MISSING_COLLECTION_STDERRS)) {
   test(`a missing collection reads as zero indexed chunks (memsearch ${version})`, async () => {
-    const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, stderr), okResult(SKILLS_STATUS_NONE_STDOUT)])
+    const { ctx, tool } = setup([
+      okResult(VERSION_STDOUT),
+      unpinnedCollection,
+      errResult(1, stderr),
+      okResult(SKILLS_STATUS_NONE_STDOUT),
+    ])
 
     const text = await status(tool, ctx)
 

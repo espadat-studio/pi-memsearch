@@ -17,6 +17,8 @@ One command, one argument, no flags. It runs with the working directory set to t
 | `collection` | Collection name for that store              | yes      |
 | `state-dir`  | Absolute path of the index-state directory  | no       |
 
+Your `collection` answer is authoritative by design. pi passes it to memsearch as `-c`, which outranks every config file, so no `[milvus].collection` in `~/.memsearch/config.toml` or a repo's `.memsearch.toml` can move your store's index elsewhere. Without a store command, pi's own derived name is only a `--default-collection` that such config outranks. To honor a config pin, read it in your resolver (`memsearch config get milvus.collection`).
+
 ## The four rules that are easy to get wrong
 
 **Decline by succeeding, not by failing.** `state-dir` is optional, but "optional" means **exit 0 printing nothing**. A non-zero exit is fatal for every mode, including this one. The natural defensive `case` arm breaks pi the first time it probes a mode your script predates:

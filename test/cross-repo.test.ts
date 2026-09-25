@@ -8,13 +8,24 @@ import type { SearchHit } from '../src/contract.ts'
 import type { ExecResult } from '../src/exec.ts'
 import { deriveCollection } from '../src/scope.ts'
 import { COMPACT_STDOUT, errResult, MISSING_COLLECTION_STDERRS, okResult, VERSION_STDOUT } from './fixtures.ts'
-import { createFakeContext, type FakeExecStep, setupExtension, storeCommand, TEST_SESSION } from './harness.ts'
+import {
+  createFakeContext,
+  type FakeExecStep,
+  type RecordedCall,
+  setupExtension,
+  storeCommand,
+  TEST_SESSION,
+} from './harness.ts'
 
-function setup(steps: FakeExecStep[], options: { env?: NodeJS.ProcessEnv } = {}) {
-  const { calls, ctx, root, tools } = setupExtension(steps, { ...options, prefix: 'cross-repo-' })
+function setup(steps: FakeExecStep[], options: { env?: NodeJS.ProcessEnv; pins?: Record<string, string> } = {}) {
+  const { calls, ctx, root, tools } = setupExtension(steps, { pins: {}, ...options, prefix: 'cross-repo-' })
   const tool = tools.get('memory_search')
   ok(tool, 'memory_search tool is registered')
   return { calls, ctx, root, tool, tools }
+}
+
+function searches(calls: RecordedCall[]): RecordedCall[] {
+  return calls.filter((call) => call.args.includes('search'))
 }
 
 async function search(
@@ -77,22 +88,16 @@ test('scope all fans out one search per project, current project first, merged b
 
   const text = await search(tool, ctx, { query: 'redis cache', scope: 'all' })
 
-  equal(calls.length, 4)
-  for (
-    const [index, collection] of [deriveCollection(root), deriveCollection(alpha), deriveCollection(beta)].entries()
-  ) {
-    deepEqual(calls[index + 1]?.args.slice(2), [
-      'memsearch',
-      'search',
-      '-j',
-      '-k',
-      '5',
-      '-c',
-      collection,
-      '--',
-      'redis cache',
-    ])
-  }
+  const flags = [
+    ['--default-collection', deriveCollection(root)],
+    ['-c', deriveCollection(alpha)],
+    ['-c', deriveCollection(beta)],
+  ]
+  deepEqual(
+    searches(calls).map((call) => call.args.slice(2)),
+    flags.map((flag) => ['memsearch', 'search', '-j', '-k', '5', ...flag, '--', 'redis cache']),
+    'the session keeps its default; discovered projects are searched under their resolved names',
+  )
   const order = ['bbbb000000000002', 'aaaa000000000001', 'dddd000000000004', 'cccc000000000003']
   const positions = order.map((hash) => text.indexOf(`chunk ${hash}`))
   ok(positions.every((position) => position >= 0), 'every hit is rendered')
@@ -131,7 +136,7 @@ test('scope project behaves exactly like the default single-project search', asy
     '-j',
     '-k',
     '5',
-    '-c',
+    '--default-collection',
     deriveCollection(root),
     '--',
     'redis',
@@ -148,7 +153,7 @@ test('every fan-out invocation honors the search timeout override', async () => 
 
   await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  for (const call of calls.slice(1)) equal(call.options.timeoutMs, 45_000)
+  for (const call of searches(calls)) equal(call.options.timeoutMs, 45_000)
 })
 
 test('a current project under a scan root is searched once', async () => {
@@ -157,7 +162,7 @@ test('a current project under a scan root is searched once', async () => {
   const beta = join(scanRoot, 'beta')
   const { calls, tools } = setupExtension(
     [okResult(VERSION_STDOUT), okResult('[]'), okResult('[]')],
-    { env: { PI_MEMSEARCH_SCAN_ROOTS: scanRoot }, prefix: 'cross-repo-dedupe-' },
+    { env: { PI_MEMSEARCH_SCAN_ROOTS: scanRoot }, pins: {}, prefix: 'cross-repo-dedupe-' },
   )
   const tool = tools.get('memory_search')
   ok(tool)
@@ -165,9 +170,10 @@ test('a current project under a scan root is searched once', async () => {
 
   const text = await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  equal(calls.length, 3)
-  equal(calls[1]?.args.includes(deriveCollection(alpha)), true)
-  equal(calls[2]?.args.includes(deriveCollection(beta)), true)
+  const searched = searches(calls)
+  equal(searched.length, 2)
+  equal(searched[0]?.args.includes(deriveCollection(alpha)), true)
+  equal(searched[1]?.args.includes(deriveCollection(beta)), true)
   ok(text.includes('2 projects searched, 0 skipped.'), 'the same directory twice is deduplicated silently')
 })
 
@@ -222,7 +228,7 @@ test('top_k caps the merged cross-repo result, not just each project', async () 
 
   const text = await search(tool, ctx, { query: 'redis', scope: 'all', top_k: 2 })
 
-  ok(calls[1]?.args.join(' ').includes('-k 2'))
+  ok(searches(calls)[0]?.args.join(' ').includes('-k 2'))
   ok(text.includes('2 memory chunk(s)'))
   ok(text.includes('chunk bbbb000000000002'))
   ok(text.includes('chunk aaaa000000000001'))
@@ -300,8 +306,8 @@ test('a project whose store sits at <dir>/memory is discovered like a repo-local
 
   await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  equal(calls.length, 3)
-  equal(calls[2]?.args.at(-3), deriveCollection(join(scanRoot, 'alpha')))
+  equal(searches(calls).length, 2)
+  equal(searches(calls)[1]?.args.at(-3), deriveCollection(join(scanRoot, 'alpha')))
 })
 
 test('the store command derives every fan-out collection, once per target directory', async () => {
@@ -321,7 +327,8 @@ test('the store command derives every fan-out collection, once per target direct
 
   await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  deepEqual(calls.slice(1).map((call) => call.args.at(-3)), [`ms_${basename(root)}`, 'ms_alpha', 'ms_beta'])
+  deepEqual(searches(calls).map((call) => call.args.at(-3)), [`ms_${basename(root)}`, 'ms_alpha', 'ms_beta'])
+  for (const call of searches(calls)) equal(call.args.at(-4), '-c', 'a store command answer is authoritative')
   const modes = readFileSync(log, 'utf8').trim().split('\n')
   equal(modes.filter((mode) => mode === 'collection').length, 3, 'one collection lookup per target project')
 })
@@ -337,7 +344,7 @@ test('an absolute MEMSEARCH_DIR names the session collection only, never a disco
   const text = await search(tool, ctx, { query: 'redis', scope: 'all' })
 
   deepEqual(
-    calls.slice(1).map((call) => call.args.at(-3)),
+    searches(calls).map((call) => call.args.at(-3)),
     [central, join(scanRoot, 'alpha'), join(scanRoot, 'beta')].map(deriveCollection),
   )
   ok(text.includes('3 projects searched, 0 skipped'))
@@ -352,7 +359,7 @@ test('a discovered store at <dir>/memory is named from the directory holding it,
 
   await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  equal(calls[2]?.args.at(-3), deriveCollection(join(scanRoot, 'alpha')))
+  equal(searches(calls)[1]?.args.at(-3), deriveCollection(join(scanRoot, 'alpha')))
 })
 
 test('a discovered store is searched under the collection its index state records', async () => {
@@ -368,7 +375,7 @@ test('a discovered store is searched under the collection its index state record
 
   await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  equal(calls[2]?.args.at(-3), 'ms_recorded_by_the_store')
+  equal(searches(calls)[1]?.args.at(-3), 'ms_recorded_by_the_store')
 })
 
 test('a discovered index-state file from a future schema leaves the derived name in place', async () => {
@@ -384,7 +391,7 @@ test('a discovered index-state file from a future schema leaves the derived name
 
   await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  equal(calls[2]?.args.at(-3), deriveCollection(join(scanRoot, 'alpha')))
+  equal(searches(calls)[1]?.args.at(-3), deriveCollection(join(scanRoot, 'alpha')))
 })
 
 test('distinct projects resolving to one collection are reported, not dropped silently', async () => {
@@ -420,5 +427,55 @@ test('a repo-local store ignores an index-state file belonging to a sibling stor
 
   await search(tool, ctx, { query: 'redis', scope: 'all' })
 
-  equal(calls[2]?.args.at(-3), deriveCollection(join(scanRoot, 'alpha')))
+  equal(searches(calls)[1]?.args.at(-3), deriveCollection(join(scanRoot, 'alpha')))
+})
+
+test('two projects pinned by their own config to one collection collapse into one search', async () => {
+  const scanRoot = seedScanRoot(['alpha', 'beta'])
+  const alpha = join(scanRoot, 'alpha')
+  const beta = join(scanRoot, 'beta')
+  const { calls, ctx, root, tool } = setup(
+    [okResult(VERSION_STDOUT), okResult('[]'), okResult('[]')],
+    { env: { PI_MEMSEARCH_SCAN_ROOTS: scanRoot }, pins: { [alpha]: 'ms_shared_pin', [beta]: 'ms_shared_pin' } },
+  )
+
+  const text = await search(tool, ctx, { query: 'redis', scope: 'all' })
+
+  deepEqual(searches(calls).map((call) => call.args.slice(-4, -2)), [
+    ['--default-collection', deriveCollection(root)],
+    ['-c', 'ms_shared_pin'],
+  ])
+  ok(text.includes('2 projects searched, 0 skipped, 1 collapsed'))
+  ok(text.includes(`collapsed (same collection as a project already searched): ${beta}`))
+})
+
+test("a discovered project's collection is resolved under its own config, not the session's", async () => {
+  const scanRoot = seedScanRoot(['alpha'])
+  const alpha = join(scanRoot, 'alpha')
+  const { calls, ctx, root, tool } = setup(
+    [okResult(VERSION_STDOUT), okResult('[]'), okResult('[]')],
+    { env: { PI_MEMSEARCH_SCAN_ROOTS: scanRoot }, pins: { [alpha]: 'ms_alpha_pin' } },
+  )
+
+  await search(tool, ctx, { query: 'redis', scope: 'all' })
+
+  const lookups = calls.filter((call) => call.args.includes('config'))
+  deepEqual(lookups.map((call) => call.options.cwd), [root, alpha])
+  equal(searches(calls)[1]?.args.at(-3), 'ms_alpha_pin')
+})
+
+test('a discovered project pinned to the session collection collapses into it', async () => {
+  const scanRoot = seedScanRoot(['alpha'])
+  const alpha = join(scanRoot, 'alpha')
+  const pins: Record<string, string> = { [alpha]: 'ms_team' }
+  const { calls, ctx, root, tool } = setup(
+    [okResult(VERSION_STDOUT), okResult('[]')],
+    { env: { PI_MEMSEARCH_SCAN_ROOTS: scanRoot }, pins },
+  )
+  pins[root] = 'ms_team'
+
+  const text = await search(tool, ctx, { query: 'redis', scope: 'all' })
+
+  equal(searches(calls).length, 1)
+  ok(text.includes(`collapsed (same collection as a project already searched): ${alpha}`))
 })

@@ -6,6 +6,7 @@ import { MEMSEARCH_SPEC, type SearchHit } from '../src/contract.ts'
 import { deriveCollection } from '../src/scope.ts'
 import { okResult, SEARCH_HITS, STATS_STDOUT, VERSION_STDOUT } from './fixtures.ts'
 import {
+  answeringStore,
   createFakeContext,
   type FakeExecStep,
   type FakeSidecarPlan,
@@ -84,7 +85,7 @@ test('MEMSEARCH_DIR moves the collection but the sidecar still runs at the repos
   await prompt(harness, 'what cache did we pick?')
 
   equal(harness.spawns[0]?.options.cwd, harness.root)
-  equal(harness.sidecars[0]?.requests[0]?.['collection'], deriveCollection('/shared/memsearch'))
+  equal(harness.sidecars[0]?.requests[0]?.['default_collection'], deriveCollection('/shared/memsearch'))
 })
 
 test('injects an invisible custom message with the top chunks', async () => {
@@ -103,14 +104,26 @@ test('injects an invisible custom message with the top chunks', async () => {
   match(message.content, /memory_expand/)
 })
 
-test('sends one search request per prompt against the project collection', async () => {
+test('sends one search request per prompt, naming the derived collection as a default config can outrank', async () => {
   const harness = setup({ env: AUTO_ON, sidecarPlans: [injectingPlan] })
 
   await harness.fire('session_start', {}, harness.ctx)
   await prompt(harness, 'what cache did we pick?')
 
   deepEqual(harness.sidecars[0]?.requests, [
-    { collection: deriveCollection(harness.root), id: 1, query: 'what cache did we pick?', top_k: 3 },
+    { default_collection: deriveCollection(harness.root), id: 1, query: 'what cache did we pick?', top_k: 3 },
+  ])
+})
+
+test('a store command collection reaches the sidecar as authoritative', async () => {
+  const command = answeringStore('/central/app/memory', 'ms_central_deadbeef')
+  const harness = setup({ env: { ...AUTO_ON, PI_MEMSEARCH_STORE_CMD: command }, sidecarPlans: [injectingPlan] })
+
+  await harness.fire('session_start', {}, harness.ctx)
+  await prompt(harness, 'what cache did we pick?')
+
+  deepEqual(harness.sidecars[0]?.requests, [
+    { collection: 'ms_central_deadbeef', id: 1, query: 'what cache did we pick?', top_k: 3 },
   ])
 })
 

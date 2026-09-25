@@ -23,6 +23,7 @@ The integration suite in `test/integration/` runs against real memsearch and is 
 - `round-trip.test.ts` — capture → index → search → expand
 - `lock-contention.test.ts` — the Milvus Lite backoff ladder under a held lock
 - `auto-context.test.ts` — the sidecar within its latency budget
+- `config-pin.test.ts` — global and project `[milvus].collection` pins outranking the derived collection
 
 ## Documentation
 

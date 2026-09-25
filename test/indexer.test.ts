@@ -18,7 +18,7 @@ import {
   userEntry,
 } from './harness.ts'
 
-const UVX_PREFIX = ['--from', 'memsearch[onnx]>=0.4.17,<0.5', 'memsearch']
+const UVX_PREFIX = ['--from', 'memsearch[onnx]>=0.4.20,<0.5', 'memsearch']
 
 function neverCapSleep(ms: number): Promise<void> {
   return ms >= SHUTDOWN_CAP_MS ? new Promise(() => {}) : Promise.resolve()
@@ -74,7 +74,7 @@ test('session start schedules a background catch-up index of the memory store', 
   await fire('session_shutdown', { reason: 'quit' }, ctx)
 
   equal(calls.length, 2)
-  deepEqual(calls[1]?.args, [...UVX_PREFIX, 'index', memoryDir, '-c', deriveCollection(root)])
+  deepEqual(calls[1]?.args, [...UVX_PREFIX, 'index', memoryDir, '--default-collection', deriveCollection(root)])
   equal(calls[1]?.options.timeoutMs, 120_000)
 })
 

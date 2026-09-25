@@ -43,6 +43,8 @@ pi install npm:pi-memsearch
 
 The first run downloads the onnx embedding model once, about 560 MB. pi announces it as a notice, so the pause is not mistaken for a hang. No API key is involved.
 
+A `[milvus].collection` pinned in `~/.memsearch/config.toml` or a project `.memsearch.toml` chooses the collection pi reads and writes, as it does for the other agents. If you already have such a pin, pi moves to that collection and nothing is migrated: the next index refills it from the markdown store, and chunks in pi's old collection stay behind.
+
 Project-local, pinned and unreleased installs, and what survives an uninstall: [the install guide](https://pi-memsearch.espadat.com/install/).
 
 ## Documentation

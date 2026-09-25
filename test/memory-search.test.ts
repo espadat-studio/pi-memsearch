@@ -43,7 +43,7 @@ test('returns scored chunks for the default top-k of 5', async () => {
     '-j',
     '-k',
     '5',
-    '-c',
+    '--default-collection',
     deriveCollection(root),
     '--',
     'redis cache',

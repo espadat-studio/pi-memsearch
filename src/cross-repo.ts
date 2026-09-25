@@ -1,9 +1,9 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { delimiter, join, resolve } from 'node:path'
-import { type Backend, DEFAULT_TOP_K, MissingCollectionError } from './backend.ts'
+import { type Backend, type CommandOptions, DEFAULT_TOP_K, MissingCollectionError } from './backend.ts'
 import type { SearchHit } from './contract.ts'
 import { readIndexState } from './index-state.ts'
-import { canonicalize, deriveCollection, storeCommandCollection } from './scope.ts'
+import { canonicalize, type CollectionRef, deriveCollection, storeCommandCollection } from './scope.ts'
 
 export const SCAN_ROOTS_ENV = 'PI_MEMSEARCH_SCAN_ROOTS'
 
@@ -43,8 +43,21 @@ export function discoverProjects(roots: string[]): string[] {
   return [...projects].sort()
 }
 
-export function resolveDiscoveredCollection(dir: string, env: NodeJS.ProcessEnv): string {
-  return storeCommandCollection({ baseDir: dir, env }) ?? recordedCollection(dir) ?? deriveCollection(dir)
+export interface ResolvedCollection {
+  name: string
+  ref: CollectionRef
+}
+
+export async function resolveDiscoveredCollection(
+  dir: string,
+  env: NodeJS.ProcessEnv,
+  backend: Pick<Backend, 'resolveCollection'>,
+  options: CommandOptions,
+): Promise<ResolvedCollection> {
+  const known = storeCommandCollection({ baseDir: dir, env }) ?? recordedCollection(dir)
+  const name = known
+    ?? await backend.resolveCollection({ kind: 'default', name: deriveCollection(dir) }, dir, options)
+  return { name, ref: { kind: 'explicit', name } }
 }
 
 function recordedCollection(dir: string): string | undefined {
@@ -69,7 +82,7 @@ export interface CrossRepoResult {
 
 export interface CrossRepoSearch {
   backend: Backend
-  collectionFor: (dir: string) => string
+  collectionFor: (dir: string) => Promise<ResolvedCollection>
   currentProject: string
   onProgress?: (done: number, total: number) => void
   onQueued?: (holder: string) => void
@@ -80,7 +93,7 @@ export interface CrossRepoSearch {
 }
 
 export async function searchAcrossProjects(params: CrossRepoSearch): Promise<CrossRepoResult> {
-  const { collapsed, targets } = planTargets([params.currentProject, ...params.projects], params.collectionFor)
+  const { collapsed, targets } = await planTargets([params.currentProject, ...params.projects], params.collectionFor)
   const hits: CrossRepoHit[] = []
   const searched: string[] = []
   const skipped: string[] = []
@@ -105,25 +118,25 @@ export async function searchAcrossProjects(params: CrossRepoSearch): Promise<Cro
   return { collapsed, hits: hits.slice(0, params.topK ?? DEFAULT_TOP_K), searched, skipped }
 }
 
-function planTargets(
+async function planTargets(
   dirs: string[],
-  collectionFor: (dir: string) => string,
-): { collapsed: string[]; targets: { collection: string; dir: string }[] } {
+  collectionFor: (dir: string) => Promise<ResolvedCollection>,
+): Promise<{ collapsed: string[]; targets: { collection: CollectionRef; dir: string }[] }> {
   const seenDirs = new Set<string>()
   const seenCollections = new Set<string>()
   const collapsed: string[] = []
-  const targets: { collection: string; dir: string }[] = []
+  const targets: { collection: CollectionRef; dir: string }[] = []
   for (const dir of dirs) {
     const canonical = canonicalize(dir)
     if (seenDirs.has(canonical)) continue
     seenDirs.add(canonical)
-    const collection = collectionFor(dir)
-    if (seenCollections.has(collection)) {
+    const { name, ref } = await collectionFor(dir)
+    if (seenCollections.has(name)) {
       collapsed.push(dir)
       continue
     }
-    seenCollections.add(collection)
-    targets.push({ collection, dir })
+    seenCollections.add(name)
+    targets.push({ collection: ref, dir })
   }
   return { collapsed, targets }
 }
