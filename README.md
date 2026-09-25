@@ -33,7 +33,7 @@ pi  ▸ memory_search → 5 chunks; top: 2026-08-13 "moved the hot cache to Redi
 
 ## Install
 
-Current release: [1.4.4](https://github.com/espadat-studio/pi-memsearch/blob/master/CHANGELOG.md). <!-- x-release-please-version -->
+Current release: [1.4.5](https://github.com/espadat-studio/pi-memsearch/blob/master/CHANGELOG.md). <!-- x-release-please-version -->
 
 Needs [uv](https://docs.astral.sh/uv/), the only external dependency, plus pi >= 0.84.1 and Node >= 22.19.
 
