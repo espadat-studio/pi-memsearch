@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.5](https://github.com/espadat-studio/pi-memsearch/compare/v1.4.4...v1.4.5) (2026-09-25)
+
+
+### Bug Fixes
+
+* let memsearch config outrank the derived collection ([#135](https://github.com/espadat-studio/pi-memsearch/issues/135)) ([ebcdd75](https://github.com/espadat-studio/pi-memsearch/commit/ebcdd756eb4347f5fe42096bb27209a550b1526a))
+* recognize the memsearch 0.4.21 missing-collection error ([#132](https://github.com/espadat-studio/pi-memsearch/issues/132)) ([3a4c7eb](https://github.com/espadat-studio/pi-memsearch/commit/3a4c7ebc1cba94e110b64c03d1c8cd4656a92ded))
+
 ## [1.4.4](https://github.com/espadat-studio/pi-memsearch/compare/v1.4.3...v1.4.4) (2026-09-23)
 
 

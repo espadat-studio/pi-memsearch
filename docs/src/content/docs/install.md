@@ -3,7 +3,7 @@ title: Install
 description: Prerequisites, the four install forms, what the first run does, and what survives an uninstall.
 ---
 
-Current release: [1.4.4](https://github.com/espadat-studio/pi-memsearch/blob/master/CHANGELOG.md). <!-- x-release-please-version -->
+Current release: [1.4.5](https://github.com/espadat-studio/pi-memsearch/blob/master/CHANGELOG.md). <!-- x-release-please-version -->
 
 ## Prerequisites
 
