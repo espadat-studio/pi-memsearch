@@ -54,8 +54,11 @@ export class BackendUnavailableError extends Error {
 }
 
 export class MissingCollectionError extends Error {
-  constructor(command: string, collection: string) {
-    super(`memsearch ${command} failed: collection ${collection} was never indexed on this machine`)
+  constructor(command: string, collection: CollectionRef) {
+    const named = collection.kind === 'explicit'
+      ? `collection ${collection.name}`
+      : `the collection memsearch config resolves from default ${collection.name}`
+    super(`memsearch ${command} failed: ${named} was never indexed on this machine`)
     this.name = 'MissingCollectionError'
   }
 }
@@ -200,7 +203,7 @@ export function createBackend(deps: BackendDeps): Backend {
     const result = await invoke(holderLabel(name), args, timeoutMs, options)
     if (result.exitCode !== 0) {
       if (collection !== undefined && isMissingCollection(result.stderr))
-        throw new MissingCollectionError(name, collection.name)
+        throw new MissingCollectionError(name, collection)
       throw commandError(name, result, timeoutMs)
     }
     return result

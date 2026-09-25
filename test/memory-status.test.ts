@@ -88,8 +88,12 @@ test('a failed collection lookup degrades to a status line instead of failing th
     okResult(SKILLS_STATUS_NONE_STDOUT),
   ])
 
-  const text = await status(tool, ctx)
+  const result = await tool.execute('call-1', {}, undefined, undefined, ctx)
+  const first = result.content[0]
+  ok(first?.type === 'text')
+  const text = first.text
 
+  equal((result.details as { collection?: string }).collection, undefined, 'the derived name is never reported as read')
   ok(
     text.includes(
       `collection: unresolved (memsearch config get failed: exit 1: Error: bad toml; default ${

@@ -60,7 +60,7 @@ async def _search(request: dict[str, Any], config: Any, provider: Any) -> list[d
     query = request["query"]
     embedded, store = await asyncio.gather(
         provider.embed([query]),
-        asyncio.to_thread(_open_store, config, _collection(request)),
+        asyncio.to_thread(lambda: _open_store(config, _collection(request))),
         return_exceptions=True,
     )
     if isinstance(store, BaseException):

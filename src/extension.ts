@@ -387,7 +387,11 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
         const availability = await backend.probe(options)
         const bootstrapState = await bootstrap.ensure(scope.dir)
         const resolution = availability.available ? await resolveForReport(resolvedName) : 'backend unavailable'
-        const reported = typeof resolution === 'string' ? undefined : resolution.name
+        const reported = typeof resolution !== 'string'
+          ? resolution.name
+          : collection.kind === 'explicit'
+          ? collection.name
+          : undefined
 
         const lines: string[] = []
         if (availability.available)
@@ -415,7 +419,7 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
           details: {
             availability,
             bootstrap: bootstrapState,
-            collection: reported ?? collection.name,
+            collection: reported,
             scope: scope.dir,
           },
         }
