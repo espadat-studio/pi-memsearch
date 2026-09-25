@@ -58,13 +58,15 @@ test('returns scored chunks for the default top-k of 5', async () => {
   ok(text.includes('0.508'))
 })
 
-test('an absent collection reads as no memories on memsearch 0.4.21', async () => {
-  const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, MISSING_COLLECTION_STDERRS['0.4.21'])])
+for (const [version, stderr] of Object.entries(MISSING_COLLECTION_STDERRS)) {
+  test(`an absent collection reads as no memories (memsearch ${version})`, async () => {
+    const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, stderr)])
 
-  const text = await search(tool, ctx, { query: 'redis cache' })
+    const text = await search(tool, ctx, { query: 'redis cache' })
 
-  equal(text, 'No memories found for "redis cache".')
-})
+    equal(text, 'No memories found for "redis cache".')
+  })
+}
 
 test('passes an explicit top_k through to the backend', async () => {
   const { calls, ctx, tool } = setup([okResult(VERSION_STDOUT), okResult(SEARCH_JSON)])

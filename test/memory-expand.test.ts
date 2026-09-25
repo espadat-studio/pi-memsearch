@@ -102,7 +102,7 @@ test('an empty origin project is treated as absent, not as a path', async () => 
 })
 
 for (const [version, stderr] of Object.entries(MISSING_COLLECTION_STDERRS)) {
-  test(`expanding into a never-indexed collection reports it plainly on memsearch ${version}`, async () => {
+  test(`expanding into a never-indexed collection reports it plainly (memsearch ${version})`, async () => {
     const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, stderr)])
 
     await rejects(() => expand(tool, ctx, 'abc'), /never indexed/)

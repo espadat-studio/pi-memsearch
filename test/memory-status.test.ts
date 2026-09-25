@@ -358,7 +358,7 @@ test('an aborted skills status call propagates instead of degrading', async () =
 })
 
 for (const [version, stderr] of Object.entries(MISSING_COLLECTION_STDERRS)) {
-  test(`a missing collection reads as zero indexed chunks on memsearch ${version}`, async () => {
+  test(`a missing collection reads as zero indexed chunks (memsearch ${version})`, async () => {
     const { ctx, tool } = setup([okResult(VERSION_STDOUT), errResult(1, stderr), okResult(SKILLS_STATUS_NONE_STDOUT)])
 
     const text = await status(tool, ctx)

@@ -230,7 +230,7 @@ test('top_k caps the merged cross-repo result, not just each project', async () 
 })
 
 for (const [version, stderr] of Object.entries(MISSING_COLLECTION_STDERRS)) {
-  test(`a project whose collection was never indexed is skipped and counted, not fatal on memsearch ${version}`, async () => {
+  test(`a project whose collection was never indexed is skipped and counted, not fatal (memsearch ${version})`, async () => {
     const scanRoot = seedScanRoot(['alpha', 'beta'])
     const alpha = join(scanRoot, 'alpha')
     const beta = join(scanRoot, 'beta')
