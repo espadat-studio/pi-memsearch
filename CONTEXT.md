@@ -37,8 +37,15 @@ The working directory every memsearch child process runs at — the git root of 
 _Avoid_: repo root, git root, project directory, project root
 
 **Collection**:
-The per-project vector index derived from the memory store, named `ms_<name>_<hash>` by memsearch's derivation over the project scope — `$MEMSEARCH_DIR` included, because upstream treats an explicit override as global scope and moves the store and the collection together. That is how a session names its own collection. A project a fan-out discovered is named from that project instead — the store command, else the name its index state records, else the derivation over the discovered directory — because the searching session's override says nothing about a store it merely found. Rebuildable at any time; never the source of truth.
+The per-project vector index built from the memory store. Rebuildable at any time; never the source of truth.
 _Avoid_: database, index (when the derived Milvus collection is meant)
+
+**Derived collection**:
+The name pi computes, `ms_<name>_<hash>` by memsearch's derivation over the project scope — `$MEMSEARCH_DIR` included, because upstream treats an explicit override as global scope and moves the store and the collection together. Only a default: passed as `--default-collection`, it is outranked by a global or project `[milvus].collection`. A project a fan-out discovered is named from that project instead — the store command, else the name its index state records, else the derivation over the discovered directory — because the searching session's override says nothing about a store it merely found.
+_Avoid_: collection (when the default, not the one read, is meant)
+
+**Resolved collection**:
+The collection memsearch actually reads once config has layered over the derived one — what `memory_status` reports and cross-repo recall deduplicates on. A store command's answer is resolved by definition: it is passed as `-c`, and no config outranks it.
 
 **Index-state directory**:
 The directory holding `.index-state.json`, the file memsearch's indexer writes and `memory_status` reads for index health. The store command's `state-dir` answer when it gives one, else `$MEMSEARCH_DIR`, else the store's parent. Not part of the memory store: a central deployment keeps it outside, so backups stay markdown-only.
