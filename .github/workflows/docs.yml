@@ -37,7 +37,7 @@ jobs:
       # Not mise-action: the docs project is a standalone npm install that wants
       # node and nothing else, and mise.toml would drag in biome, dprint, hk,
       # pkl and zizmor on every run. The node major tracks mise.toml by hand.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
           cache: npm
