@@ -97,6 +97,27 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
       shutdownSignal: () => captureAbort.signal,
     })
 
+    // Compaction recall: keep memory context alive across context compaction.
+    // The host summarizes `preparation.messagesToSummarize` after this hook and
+    // shares the object by reference, so appending the recalled memories there
+    // is the portable injection point (ADR 0009).
+    pi.on('session_before_compact', async (event, ctx) => {
+      if (env['PI_MEMSEARCH_COMPACT_RECALL'] === 'off') return
+      const messages = event.preparation.messagesToSummarize
+      const userText = messages
+        .filter((message) => message.role === 'user')
+        .map((message) => (typeof message.content === 'string' ? message.content : ''))
+        .filter(Boolean)
+        .slice(-5)
+        .join('\n')
+        .slice(-2000)
+      if (userText.trim() === '') return
+      const { collection, options } = resolveTarget(ctx, env, backend, toolOptions(undefined))
+      const hits = await backend.search(userText, collection, { ...options, topK: 5 }).catch(() => [])
+      if (hits.length === 0) return
+      messages.push({ role: 'user', content: `[memsearch memories]\n${formatHits(hits)}`, timestamp: 0 })
+    })
+
     pi.on('session_start', (_event, ctx) => {
       shutdownEpoch++
       repositoryDir = resolveRepositoryDir(ctx.cwd)
