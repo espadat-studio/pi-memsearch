@@ -23,7 +23,7 @@ import {
 } from './cross-repo.ts'
 import { type ExecFn, execProcess } from './exec.ts'
 import { type IndexState, indexStatePath, readIndexState } from './index-state.ts'
-import { createIndexTriggers, SHUTDOWN_CAP_MS } from './indexer.ts'
+import { createIndexTriggers, shutdownCapMs } from './indexer.ts'
 import { appendMemoryEntry, dailyFilePathForKey, localDateKey } from './memory-file.ts'
 import {
   type CompactBlock,
@@ -113,7 +113,7 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
         await queue.flush()
         await indexer.settle()
       })()
-      const capped = sleep(SHUTDOWN_CAP_MS).then(() => {
+      const capped = sleep(shutdownCapMs(env)).then(() => {
         if (epoch !== shutdownEpoch) return
         captureAbort.abort()
         indexer.abortInFlight()

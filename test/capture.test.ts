@@ -73,7 +73,7 @@ function setup(options: {
     await fire('agent_settled', {}, ctx)
     await Promise.all(tasks)
   }
-  return { file: join(root, '.memsearch', 'memory', '2026-08-13.md'), requests, settle, tasks }
+  return { ctx, file: join(root, '.memsearch', 'memory', '2026-08-13.md'), fire, requests, settle, tasks }
 }
 
 test('settled exchange with assistant text appends a distilled anchored entry', async () => {
@@ -94,6 +94,30 @@ test('settled exchange with assistant text appends a distilled anchored entry', 
   equal(request.model.id, 'session-model')
   match(request.transcript, /\[User\]: fix the login bug/)
   match(request.transcript, /\[Assistant\]: fixed it by escaping the query/)
+})
+
+test('agent_end captures too, for hosts without agent_settled', async () => {
+  const { ctx, file, fire, requests, tasks } = setup({
+    branch: [userEntry('u1', 'fix the login bug'), assistantEntry('a1', 'fixed it by escaping the query')],
+  })
+
+  await fire('agent_end', {}, ctx)
+  await Promise.all(tasks)
+
+  equal(requests.length, 1)
+  ok(existsSync(file))
+})
+
+test('dispatch on both events distills the exchange only once', async () => {
+  const { ctx, fire, requests, settle, tasks } = setup({
+    branch: [userEntry('u1', 'fix the login bug'), assistantEntry('a1', 'fixed it by escaping the query')],
+  })
+
+  await settle()
+  await fire('agent_end', {}, ctx)
+  await Promise.all(tasks)
+
+  equal(requests.length, 1)
 })
 
 test('no assistant text means no entry and no distillation call', async () => {

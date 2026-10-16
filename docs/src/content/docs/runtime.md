@@ -11,13 +11,13 @@ Constants are named as they appear in source, so they stay greppable as line num
 
 ## Hook to action
 
-| pi event             | Actions, in order                                                                                                                                                                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session_start`      | Resolve the repository directory and project scope; fresh abort controllers; resolve the delegated index-state directory; indexer catch-up; ensure the embedding provider once; build the stable snapshot; start the sidecar when auto-context is on |
-| `before_agent_start` | Append the stable snapshot to the system prompt, rebuilding it first when the local date has rolled over; when auto-context is on, run the per-prompt search                                                                                         |
-| `agent_settled`      | Gate the exchange, distill it, append one memory entry, note the write so the debounced index is scheduled                                                                                                                                           |
-| `session_compact`    | Rebuild the stable snapshot                                                                                                                                                                                                                          |
-| `session_shutdown`   | Abort tool signals; begin indexer shutdown; flush the capture queue and settle the indexer, racing `SHUTDOWN_CAP_MS`; stop the sidecar                                                                                                               |
+| pi event                     | Actions, in order                                                                                                                                                                                                                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session_start`              | Resolve the repository directory and project scope; fresh abort controllers; resolve the delegated index-state directory; indexer catch-up; ensure the embedding provider once; build the stable snapshot; start the sidecar when auto-context is on                                           |
+| `before_agent_start`         | Append the stable snapshot to the system prompt, rebuilding it first when the local date has rolled over; when auto-context is on, run the per-prompt search                                                                                                                                   |
+| `agent_settled`, `agent_end` | Gate the exchange, distill it, append one memory entry, note the write so the debounced index is scheduled. Registered on both: pi settles exchanges with `agent_settled`, pi-family runtimes may dispatch only `agent_end`. The entry-id dedupe makes a double dispatch extract nothing twice |
+| `session_compact`            | Rebuild the stable snapshot                                                                                                                                                                                                                                                                    |
+| `session_shutdown`           | Abort tool signals; begin indexer shutdown; flush the capture queue and settle the indexer, racing the shutdown budget (`SHUTDOWN_CAP_MS`, overridable via `PI_MEMSEARCH_SHUTDOWN_CAP_MS`); stop the sidecar                                                                                   |
 
 Registrations live in `src/extension.ts`, except capture (`src/capture.ts`).
 
@@ -65,6 +65,8 @@ Every settled exchange passes two gates before distillation:
 
 - the assistant produced text
 - the run was not aborted
+
+Capture listens on `agent_settled` and `agent_end` (`src/capture.ts`): pi marks a settled exchange with the former, while pi-family runtimes may dispatch only the latter. Whichever fires first claims the exchange by entry id, so hosts that dispatch both distill once.
 
 What passes is distilled by the cheapest model of the session's provider by default; `PI_MEMSEARCH_CAPTURE_MODEL` overrides, as `<id>` or `<provider>/<id>` (`src/distillation-model.ts`). Automatic memory therefore does not inflate the bill.
 
@@ -167,7 +169,7 @@ Milvus Lite allows a single client at a time, so every memsearch invocation goes
 
 - A locked-out call retries on `BACKOFF_DELAYS_MS`: 200 ms, 500 ms, 1 s, 2 s. Contention from another mesh agent resolves without surfacing as an error.
 - Writes schedule an index `INDEX_DEBOUNCE_MS` (5 s) later, so a burst of captures costs one index.
-- `session_shutdown` flushes the pending capture and settles the indexer, racing `SHUTDOWN_CAP_MS` (15 s).
+- `session_shutdown` flushes the pending capture and settles the indexer, racing `SHUTDOWN_CAP_MS` (15 s). Hosts that cap extension handler runtime can shorten the race with `PI_MEMSEARCH_SHUTDOWN_CAP_MS`.
 - `memsearch watch` is never used: pi owns the indexing schedule, and a watcher would fight the queue for the lock.
 - Index state is read from `<store-cmd> state-dir` when the command answers that mode, else from `$MEMSEARCH_DIR/.index-state.json` when that variable is set (memsearch's own state-dir override, and where its child writes the file), else from the root of the `.memsearch` tree the store sits in, else from `.index-state.json` beside the store. The tree root is where memsearch truncates (`index_state.py`), so a store nested deeper than one level under the tree is read from the root too, never from its own parent. That component search follows symlinks through a store directory that does not exist yet, as memsearch does. `memory_status` prints the path it read.
 - A `state-dir` answer is exported as `MEMSEARCH_DIR` to every memsearch child pi spawns (CLI invocations and the auto-context sidecar alike), so the child writes its state file where pi reads it. The exported value is the session's own answer, resolved at `session_start` from the session directory; cross-repo fan-out legs carry it too, which changes nothing because searching never writes state. It overrides an inherited `MEMSEARCH_DIR` for those children only; pi's own environment is untouched. Without the mode, pi sets nothing: memsearch writes `.index-state.json` only inside a `.memsearch` tree or at `$MEMSEARCH_DIR`, so a store command answering outside both and declining `state-dir` forfeits index health and keeps everything else ([ADR 0007](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0007-delegated-store-resolution.md)). pi reports no path at all in that case, rather than one nothing will ever write to.
