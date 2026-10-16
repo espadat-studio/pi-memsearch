@@ -5,6 +5,19 @@ import { resolveCollection, resolveProjectScope } from './scope.ts'
 export const INDEX_DEBOUNCE_MS = 5_000
 export const SHUTDOWN_CAP_MS = 15_000
 
+/** Shutdown settle budget, in ms.
+ *
+ * The session_shutdown handler races the capture flush against this budget.
+ * Hosts that cap extension handler runtime need the race to end inside that
+ * deadline, so the budget is overridable via `PI_MEMSEARCH_SHUTDOWN_CAP_MS`.
+ */
+export function shutdownCapMs(env: NodeJS.ProcessEnv): number {
+  const raw = env['PI_MEMSEARCH_SHUTDOWN_CAP_MS']
+  if (raw === undefined || raw === '') return SHUTDOWN_CAP_MS
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : SHUTDOWN_CAP_MS
+}
+
 export interface IndexTriggers {
   abortInFlight(): void
   beginShutdown(): void
