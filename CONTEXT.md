@@ -67,7 +67,7 @@ Destructive removal of one whole memory entry from the memory store and, via rei
 _Avoid_: delete (generic), forget (the tool name, not the concept)
 
 **Context compaction**:
-pi shrinking a session's live conversation when its context window fills (the `session_compact` event). A stable-snapshot refresh checkpoint; touches nothing in the memory store.
+pi shrinking a session's live conversation when its context window fills (the `session_compact` event). A stable-snapshot refresh checkpoint, and the point where compaction recall keeps memory anchors in the summary that replaces the conversation ([ADR 0009](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0009-compaction-recall.md)); touches nothing in the memory store.
 _Avoid_: compaction (unqualified), compact
 
 **Memory compaction**:

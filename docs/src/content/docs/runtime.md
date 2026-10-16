@@ -11,13 +11,14 @@ Constants are named as they appear in source, so they stay greppable as line num
 
 ## Hook to action
 
-| pi event             | Actions, in order                                                                                                                                                                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session_start`      | Resolve the repository directory and project scope; fresh abort controllers; resolve the delegated index-state directory; indexer catch-up; ensure the embedding provider once; build the stable snapshot; start the sidecar when auto-context is on |
-| `before_agent_start` | Append the stable snapshot to the system prompt, rebuilding it first when the local date has rolled over; when auto-context is on, run the per-prompt search                                                                                         |
-| `agent_settled`      | Gate the exchange, distill it, append one memory entry, note the write so the debounced index is scheduled                                                                                                                                           |
-| `session_compact`    | Rebuild the stable snapshot                                                                                                                                                                                                                          |
-| `session_shutdown`   | Abort tool signals; begin indexer shutdown; flush the capture queue and settle the indexer, racing `SHUTDOWN_CAP_MS`; stop the sidecar                                                                                                               |
+| pi event                 | Actions, in order                                                                                                                                                                                                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session_start`          | Resolve the repository directory and project scope; fresh abort controllers; resolve the delegated index-state directory; indexer catch-up; ensure the embedding provider once; build the stable snapshot; start the sidecar when auto-context is on                               |
+| `before_agent_start`     | Append the stable snapshot to the system prompt, rebuilding it first when the local date has rolled over; when auto-context is on, run the per-prompt search                                                                                                                       |
+| `agent_settled`          | Gate the exchange, distill it, append one memory entry, note the write so the debounced index is scheduled                                                                                                                                                                         |
+| `session_before_compact` | Search the store for memories matching the user text about to be summarized, and append the hits to `preparation.messagesToSummarize` so the summary keeps the anchors ([ADR 0009](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0009-compaction-recall.md)) |
+| `session_compact`        | Rebuild the stable snapshot                                                                                                                                                                                                                                                        |
+| `session_shutdown`       | Abort tool signals; begin indexer shutdown; flush the capture queue and settle the indexer, racing `SHUTDOWN_CAP_MS`; stop the sidecar                                                                                                                                             |
 
 Registrations live in `src/extension.ts`, except capture (`src/capture.ts`).
 
@@ -98,6 +99,14 @@ Opt-in and read-side only. `/recall --all <query>`, or `memory_search` with `sco
 - `project` takes a path a fan-out hit was labeled with, which is always a project directory. It is not resolved for a subdirectory: no git walk runs, so a path inside a repo names the subdirectory's collection and finds nothing. Pass the label back verbatim.
 
 Default recall stays project-scoped, and no store or collection is ever written. There is deliberately no global store ([ADR 0003](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0003-no-global-store-cross-repo-recall.md)).
+
+### Compaction recall
+
+Context compaction summarizes the conversation into a summary that replaces it. Without help, the memories that gave that conversation its meaning leave with it: the summary records what was decided, rarely the store entries the decision rests on. At `session_before_compact`, the last few user messages of the window about to be summarized become a search query, and the hits are appended to `preparation.messagesToSummarize` as one `[memsearch memories]` message — content the summarizer sees like any other message ([ADR 0009](https://github.com/espadat-studio/pi-memsearch/blob/master/meta/adr/0009-compaction-recall.md)).
+
+- One search per compaction, on the same queue and timeout as every other backend call. A failed search appends nothing and never blocks the compaction.
+- The injection is a message mutation, not a host API: pi's `session_before_compact` result can replace a compaction, not extend its input, and the preparation object is shared with the summarizer by reference.
+- `PI_MEMSEARCH_COMPACT_RECALL=off` disables it. The snapshot still refreshes at `session_compact` either way — that path answers "what is true now", this one keeps "why it is true" in the summary that replaces the conversation.
 
 ## Redaction
 
