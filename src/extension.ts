@@ -46,7 +46,7 @@ import {
 } from './scope.ts'
 import { type SpawnSidecarFn, spawnSidecarProcess } from './sidecar.ts'
 import { buildSnapshot } from './snapshot.ts'
-import { DEFAULT_CONTEXT, DEFAULT_LIMIT, renderTranscript } from './transcript.ts'
+import { DEFAULT_CONTEXT, DEFAULT_LIMIT, renderTranscript, userText } from './transcript.ts'
 
 export interface MemsearchDeps {
   complete: Complete
@@ -104,20 +104,16 @@ export function createMemsearchExtension(deps: Partial<MemsearchDeps> = {}): (pi
     pi.on('session_before_compact', async (event, ctx) => {
       if (env['PI_MEMSEARCH_COMPACT_RECALL'] === 'off') return
       const messages = event.preparation.messagesToSummarize
-      const userText = messages
+      const query = messages
         .filter((message) => message.role === 'user')
-        .map((message) =>
-          typeof message.content === 'string'
-            ? message.content
-            : message.content.map((part) => (part.type === 'text' ? part.text : '')).join('\n')
-        )
+        .map(userText)
         .filter(Boolean)
         .slice(-5)
         .join('\n')
         .slice(-2000)
-      if (userText.trim() === '') return
+      if (query === '') return
       const { collection, options } = resolveTarget(ctx, env, backend, toolOptions(event.signal))
-      const hits = await backend.search(userText, collection, { ...options, topK: 5 }).catch(() => [])
+      const hits = await backend.search(query, collection, { ...options, topK: 5 }).catch(() => [])
       if (hits.length === 0) return
       messages.push({ role: 'user', content: `[memsearch memories]\n${formatHits(hits)}`, timestamp: 0 })
     })

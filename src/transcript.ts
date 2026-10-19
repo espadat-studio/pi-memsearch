@@ -99,7 +99,7 @@ function renderBody(message: AgentMessage): string {
   return capTurn(parts.join('\n'))
 }
 
-function userText(message: UserMessage): string {
+export function userText(message: UserMessage): string {
   if (typeof message.content === 'string') return message.content.trim()
   return message
     .content

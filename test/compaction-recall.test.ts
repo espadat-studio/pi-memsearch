@@ -102,3 +102,22 @@ test('no user text in the window injects nothing', async () => {
 
   equal(prep.messagesToSummarize.length, 0)
 })
+
+test('an image-only message does not take a slot in the query window', async () => {
+  const { calls, ctx, fire } = harness([okResult(VERSION_STDOUT), okResult(SEARCH_JSON)])
+  const prep = preparation(['one', 'two', 'three', 'four', 'five'])
+  prep.messagesToSummarize.push({
+    role: 'user',
+    content: [
+      { data: 'aGVsbG8=', mimeType: 'image/png', type: 'image' },
+      { data: 'aGVsbG8=', mimeType: 'image/png', type: 'image' },
+    ],
+    timestamp: 0,
+  })
+
+  await fire('session_before_compact', { preparation: prep }, ctx)
+
+  const search = calls.find((call) => call.args.includes('search'))
+  ok(search)
+  match(search.args.join(' '), /one/)
+})
