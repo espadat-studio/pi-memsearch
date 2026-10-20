@@ -314,3 +314,24 @@ test('a hung index is aborted at the shutdown cap and deferred to the next catch
   equal(indexCalls(calls).length, 2)
   equal(calls[2]?.options.signal?.aborted, false, 'the next catch-up runs with a fresh signal')
 })
+
+test('shutdown budget honors an override and rejects unusable values', async () => {
+  const sleeps: number[] = []
+  const { fire, ctx } = setupExtension([], {
+    prefix: 'shutdown-budget-',
+    env: { PI_MEMSEARCH_SHUTDOWN_CAP_MS: '1500' },
+    sleep: async (ms) => {
+      sleeps.push(ms)
+    },
+  })
+  await fire('session_start', { reason: 'startup' }, ctx)
+  await fire('session_shutdown', {}, ctx)
+  ok(sleeps.includes(1500), 'the settle race runs against the configured budget')
+
+  throws(() => setupExtension([], { prefix: 'shutdown-budget-', env: { PI_MEMSEARCH_SHUTDOWN_CAP_MS: 'nope' } }), {
+    message: /PI_MEMSEARCH_SHUTDOWN_CAP_MS must be a positive integer/,
+  })
+  throws(() => setupExtension([], { prefix: 'shutdown-budget-', env: { PI_MEMSEARCH_SHUTDOWN_CAP_MS: '0' } }), {
+    message: /PI_MEMSEARCH_SHUTDOWN_CAP_MS must be a positive integer/,
+  })
+})

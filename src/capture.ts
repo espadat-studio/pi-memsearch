@@ -44,8 +44,17 @@ export interface CaptureDeps {
 
 export function registerCapture(pi: ExtensionAPI, deps: CaptureDeps): void {
   let lastCapturedEntryId: string | undefined
+  let hasSeenSettled = false
 
-  pi.on('agent_settled', (_event, ctx) => {
+  // Hosts disagree on which lifecycle event marks a settled exchange: pi
+  // dispatches `agent_settled`, some pi-family runtimes dispatch only
+  // `agent_end`. Registering both keeps capture live on either; the entry-id
+  // dedupe below makes a double dispatch extract nothing the second time.
+  const captureExchange = (_event: unknown, ctx: ExtensionContext) => {
+    // `agent_end` also fires for a failed attempt that is about to be retried,
+    // carrying `willRetry`. Capturing that attempt would write a dead entry and
+    // move the dedupe past the retried exchange; the retry settles on its own.
+    if (_event && typeof _event === 'object' && 'willRetry' in _event && _event.willRetry === true) return
     if (deps.env['PI_MEMSEARCH_CAPTURE'] === 'off') return
     const transcriptPath = ctx.sessionManager.getSessionFile()
     if (!transcriptPath) return
@@ -85,6 +94,14 @@ export function registerCapture(pi: ExtensionAPI, deps: CaptureDeps): void {
       }
       deps.onWrite(cwd)
     })
+  }
+  pi.on('agent_settled', (event, ctx) => {
+    hasSeenSettled = true
+    captureExchange(event, ctx)
+  })
+  pi.on('agent_end', (event, ctx) => {
+    if (hasSeenSettled) return
+    captureExchange(event, ctx)
   })
 }
 

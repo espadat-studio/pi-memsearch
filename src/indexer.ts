@@ -3,6 +3,7 @@ import type { Backend } from './backend.ts'
 import { resolveCollection, resolveProjectScope } from './scope.ts'
 
 export const INDEX_DEBOUNCE_MS = 5_000
+/** Default settle race for `session_shutdown`; `PI_MEMSEARCH_SHUTDOWN_CAP_MS` overrides it. */
 export const SHUTDOWN_CAP_MS = 15_000
 
 export interface IndexTriggers {

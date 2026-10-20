@@ -286,7 +286,7 @@ export function createBackend(deps: BackendDeps): Backend {
   return { compact, configGet, configSet, expand, index, probe, resolveCollection, search, skillsStatus, stats }
 }
 
-function resolveTimeoutMs(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
+export function resolveTimeoutMs(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
   const raw = env[key]
   if (raw === undefined || raw === '') return fallback
   const value = Number(raw)
