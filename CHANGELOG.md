@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0](https://github.com/espadat-studio/pi-memsearch/compare/v1.4.5...v1.5.0) (2026-10-20)
+
+
+### Features
+
+* capture on agent_end too, and make the shutdown budget overridable ([#157](https://github.com/espadat-studio/pi-memsearch/issues/157)) ([0d3b286](https://github.com/espadat-studio/pi-memsearch/commit/0d3b286de10d946a386d4f7f5cbc3ad5e035df10))
+* keep memory anchors in the context-compaction summary ([#158](https://github.com/espadat-studio/pi-memsearch/issues/158)) ([2048235](https://github.com/espadat-studio/pi-memsearch/commit/20482354a1d963f9cb202ebbd0e714300d8b3a18))
+
+
+### Bug Fixes
+
+* **extension:** skip blank user messages in the compaction recall query ([#163](https://github.com/espadat-studio/pi-memsearch/issues/163)) ([2e5278b](https://github.com/espadat-studio/pi-memsearch/commit/2e5278b2938e791aace7519a7de18aedb449c148)), closes [#161](https://github.com/espadat-studio/pi-memsearch/issues/161)
+
 ## [1.4.5](https://github.com/espadat-studio/pi-memsearch/compare/v1.4.4...v1.4.5) (2026-09-25)
 
 
