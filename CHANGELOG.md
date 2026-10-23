@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/espadat-studio/pi-memsearch/compare/v1.5.0...v1.5.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **auto-context:** make the sidecar ignore repo-local uv config ([#167](https://github.com/espadat-studio/pi-memsearch/issues/167)) ([b9598d6](https://github.com/espadat-studio/pi-memsearch/commit/b9598d61cdc14837ca5da2866f8ab780652b04b2)), closes [#166](https://github.com/espadat-studio/pi-memsearch/issues/166)
+
 ## [1.5.0](https://github.com/espadat-studio/pi-memsearch/compare/v1.4.5...v1.5.0) (2026-10-20)
 
 
