@@ -30,8 +30,8 @@ function wait(ms: number): Promise<void> {
 describe('sidecar contract against the pinned memsearch', { skip: SKIP_UNLESS_GATED }, () => {
   test('the memsearch internals the sidecar imports resolve inside the pinned environment', async () => {
     const result = await execProcess(
-      'uv',
-      ['run', '--no-project', '--with', MEMSEARCH_SPEC, 'python', SIDECAR_SCRIPT, '--probe'],
+      'uvx',
+      ['--from', MEMSEARCH_SPEC, 'python', SIDECAR_SCRIPT, '--probe'],
       { timeoutMs: 180_000 },
     )
     equal(result.exitCode, 0, `probe failed:\n${result.stderr}`)
@@ -115,8 +115,8 @@ describe('auto-context against real memsearch', { skip: SKIP_UNLESS_GATED }, () 
 
   test('a never-indexed collection yields empty hits, not an error', async () => {
     const proc = spawnSidecarProcess(
-      'uv',
-      ['run', '--no-project', '--with', MEMSEARCH_SPEC, 'python', SIDECAR_SCRIPT],
+      'uvx',
+      ['--from', MEMSEARCH_SPEC, 'python', SIDECAR_SCRIPT],
       { cwd: live.home },
     )
     try {

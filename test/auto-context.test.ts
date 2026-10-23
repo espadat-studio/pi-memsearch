@@ -52,16 +52,16 @@ test('stays inert without PI_MEMSEARCH_AUTO_CONTEXT=on', async () => {
   equal(message, undefined)
 })
 
-test('spawns the sidecar eagerly at session start via uv with the pinned spec', async () => {
+test('spawns the sidecar eagerly at session start via uvx with the pinned spec', async () => {
   const harness = setup({ env: AUTO_ON, sidecarPlans: [() => {}] })
 
   await harness.fire('session_start', {}, harness.ctx)
 
   equal(harness.spawns.length, 1)
   const spawn = harness.spawns[0]
-  equal(spawn?.command, 'uv')
-  deepEqual(spawn?.args.slice(0, 5), ['run', '--no-project', '--with', MEMSEARCH_SPEC, 'python'])
-  const script = spawn?.args[5] ?? ''
+  equal(spawn?.command, 'uvx')
+  deepEqual(spawn?.args.slice(0, 3), ['--from', MEMSEARCH_SPEC, 'python'])
+  const script = spawn?.args[3] ?? ''
   ok(script.endsWith('sidecar.py'), `expected the sidecar script, got ${script}`)
   ok(existsSync(script), 'the spawned script ships with the package')
   equal(spawn?.options.cwd, harness.root)
