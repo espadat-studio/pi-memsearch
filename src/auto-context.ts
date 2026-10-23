@@ -105,7 +105,15 @@ export function createAutoContext(deps: AutoContextDeps): AutoContext {
 
   function spawn(dir: string): void {
     let readyResolve: () => void = () => {}
-    const proc = deps.spawnSidecar('uv', ['run', '--no-project', '--with', MEMSEARCH_SPEC, 'python', SIDECAR_SCRIPT], {
+    const proc = deps.spawnSidecar('uv', [
+      'run',
+      '--no-project',
+      '--no-config',
+      '--with',
+      MEMSEARCH_SPEC,
+      'python',
+      SIDECAR_SCRIPT,
+    ], {
       cwd: dir,
       ...(stateDir === undefined ? {} : { env: { MEMSEARCH_DIR: stateDir } }),
     })

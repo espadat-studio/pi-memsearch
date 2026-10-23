@@ -60,8 +60,8 @@ test('spawns the sidecar eagerly at session start via uv with the pinned spec', 
   equal(harness.spawns.length, 1)
   const spawn = harness.spawns[0]
   equal(spawn?.command, 'uv')
-  deepEqual(spawn?.args.slice(0, 5), ['run', '--no-project', '--with', MEMSEARCH_SPEC, 'python'])
-  const script = spawn?.args[5] ?? ''
+  deepEqual(spawn?.args.slice(0, 6), ['run', '--no-project', '--no-config', '--with', MEMSEARCH_SPEC, 'python'])
+  const script = spawn?.args[6] ?? ''
   ok(script.endsWith('sidecar.py'), `expected the sidecar script, got ${script}`)
   ok(existsSync(script), 'the spawned script ships with the package')
   equal(spawn?.options.cwd, harness.root)
