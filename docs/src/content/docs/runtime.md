@@ -159,9 +159,9 @@ Opt-in via `PI_MEMSEARCH_AUTO_CONTEXT=on`. Every user prompt runs a semantic sea
 
 Chunks arrive in `memory_search` format, so any injected chunk hash chains into `memory_expand`. Chunks already verbatim in the stable snapshot are dropped.
 
-One sidecar per session (`uv run --no-config`, same pinned memsearch spec, same config resolution) holds the embedding model warm for the whole session and opens a throwaway store per prompt. The machine-wide Milvus Lite lock is therefore borrowed for milliseconds, and other mesh agents stay unblocked. Crashes respawn lazily.
+One sidecar per session (`uvx --from <spec> python`, same pinned memsearch spec, same memsearch config resolution) holds the embedding model warm for the whole session and opens a throwaway store per prompt. The machine-wide Milvus Lite lock is therefore borrowed for milliseconds, and other mesh agents stay unblocked. Crashes respawn lazily.
 
-Like the `uvx` CLI calls, the sidecar ignores uv config in the repository it starts in (`uv.toml`, `pyproject.toml` `[tool.uv]`). User-level uv config and `UV_*` env vars still apply.
+Like the CLI calls, the sidecar resolves memsearch through `uvx`, so it ignores uv config in the repository it starts in (`uv.toml`, `pyproject.toml` `[tool.uv]`). User-level uv config and `UV_*` env vars still apply.
 
 Every failure degrades to no injection, tracked in its own counter:
 

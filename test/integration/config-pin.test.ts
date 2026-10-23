@@ -28,7 +28,7 @@ function pinGlobally(live: LiveHarness): void {
 }
 
 function sidecarSearch(cwd: string, request: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const proc = spawnSidecarProcess('uv', ['run', '--no-project', '--with', MEMSEARCH_SPEC, 'python', SIDECAR_SCRIPT], {
+  const proc = spawnSidecarProcess('uvx', ['--from', MEMSEARCH_SPEC, 'python', SIDECAR_SCRIPT], {
     cwd,
   })
   return new Promise<Record<string, unknown>>((resolve, reject) => {
