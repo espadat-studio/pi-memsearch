@@ -53,7 +53,7 @@ jobs:
         with:
           # Node 22 tops out at npm 10.9.8; trusted publishing needs >= 11.5.1,
           # which Node 24 bundles. Avoids installing npm ad hoc next to the OIDC token.
-          node-version: 24
+          node-version: 26
           registry-url: https://registry.npmjs.org
       # No build step: the package ships TypeScript source, so publishing needs no deps.
       - run: npm publish
